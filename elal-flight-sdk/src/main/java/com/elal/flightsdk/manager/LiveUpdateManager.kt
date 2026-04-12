@@ -5,6 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.graphics.drawable.Icon
+import android.os.Build
+import android.widget.RemoteViews
+import androidx.core.app.NotificationCompat
 import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
@@ -68,25 +71,81 @@ object LiveUpdateManager {
         state: JourneyContentState
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-
-        val progressStyle = buildProgressStyle(attributes, state)
-
         val contentText = buildContentText(state)
         val statusBarText = buildStatusBarText(attributes, state)
+        val remoteViews = buildRemoteViews(context, state, statusBarText, contentText)
 
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(Icon.createWithResource(context, R.drawable.ic_notification))
+        // XML RemoteViews replica used for all Android versions.
+        // Android 16 native Notification.ProgressStyle is preserved in buildProgressStyle()
+        // below for future reference.
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(statusBarText)
             .setContentText(contentText)
-            .setStyle(progressStyle)
-            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(remoteViews)        // shows in collapsed state
+            .setCustomBigContentView(remoteViews)     // shows in expanded state
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .build()
-
         nm.notify(NOTIFICATION_ID, notification)
     }
 
+    private fun buildRemoteViews(
+        context: Context,
+        state: JourneyContentState,
+        title: String,
+        content: String
+    ): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.notification_progress_bar)
+        views.setTextViewText(R.id.notif_title, title)
+        views.setTextViewText(R.id.notif_content, content)
+
+        val progressIndex = when (state.status) {
+            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> -1
+            JourneyStatus.CHECK_IN -> 0
+            JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED -> 1
+            JourneyStatus.BOARDING -> 2
+            JourneyStatus.LAST_CALL -> 3
+            JourneyStatus.TAKING_OFF -> 4
+            JourneyStatus.ON_THE_WAY -> 5
+            JourneyStatus.ARRIVAL -> 6
+        }
+
+        val dotIds = listOf(
+            R.id.notif_dot_0, R.id.notif_dot_1, R.id.notif_dot_2, R.id.notif_dot_3,
+            R.id.notif_dot_4, R.id.notif_dot_5, R.id.notif_dot_6
+        )
+        val segIds = listOf(
+            R.id.notif_seg_0, R.id.notif_seg_1, R.id.notif_seg_2,
+            R.id.notif_seg_3, R.id.notif_seg_4, R.id.notif_seg_5
+        )
+
+        dotIds.forEachIndexed { i, id ->
+            views.setInt(id, "setBackgroundResource",
+                if (progressIndex >= i) R.drawable.notification_dot_active
+                else R.drawable.notification_dot_inactive)
+        }
+
+        segIds.forEachIndexed { i, id ->
+            views.setInt(id, "setBackgroundResource",
+                if (progressIndex > i) R.drawable.notification_seg_active
+                else R.drawable.notification_seg_inactive)
+        }
+
+        return views
+    }
+
     /**
+     * Android 16 native implementation kept for reference.
+     * The XML RemoteViews in buildRemoteViews() mirrors all of these customizations:
+     *   - ProgressStyle.Point  × 7  → notif_dot_0…6  (green/grey oval drawables)
+     *   - ProgressStyle.Segment × 6 → notif_seg_0…5  (green/grey rounded-rect drawables)
+     *   - setStyledByProgress(false) → colors set explicitly per dot/segment, not derived from progress value
+     *   - setProgress()              → progressIndex drives which dots/segments are active
+     *   - CATEGORY_TRANSPORT         → set identically on NotificationCompat builder
+     *   - setOngoing(true)           → set identically on NotificationCompat builder
+     *
      * Builds a ProgressStyle with 7 points and 6 segments representing the journey statuses.
      *
      * Points:  [0] Check In  [1] Board Soon  [2] Boarding  [3] Last Call  [4] Taking Off  [5] On The Way  [6] Arrival
