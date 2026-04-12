@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">El Al Demo</string>
+    <string name="journey_title">Journey</string>
+    <string name="current_stage">Current Stage</string>
+    <string name="no_active_activity">No Active Activity</string>
+    <string name="start_activity">Start Activity</string>
+    <string name="next_stage">Next Stage</string>
+    <string name="end_activity">End Activity</string>
+    <string name="simulate_journey">Simulate Journey</string>
+    <string name="simulating">Simulating journey…</string>
+</resources>
