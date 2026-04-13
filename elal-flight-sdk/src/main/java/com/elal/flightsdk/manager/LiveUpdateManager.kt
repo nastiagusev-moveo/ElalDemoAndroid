@@ -16,13 +16,16 @@ import com.elal.flightsdk.model.JourneyStatus
  * Manages the lifecycle of Live Update notifications.
  * On Android 16+ uses Notification.ProgressStyle for the native progress UI.
  * On older devices shows a plain ongoing notification.
+ * Mirrors the iOS LiveActivityManager pattern: start → update → end.
  */
 object LiveUpdateManager {
 
     private const val NOTIFICATION_ID = 7001
     private const val CHANNEL_ID = "elal_journey"
-    private const val PROGRESS_MAX = 600
-    private const val SEG_LEN = 100
+
+    // 5 segments × 200 = 1000 — clean integer math, no rounding gaps
+    private const val PROGRESS_MAX = 1000
+    private const val SEG_LEN = 200
 
     private val greenColor = 0xFF4CAF50.toInt()
     private val greyColor  = 0xFF9E9E9E.toInt()
@@ -85,30 +88,31 @@ object LiveUpdateManager {
     }
 
     /**
-     * Builds a ProgressStyle with 7 points and 6 segments representing the journey statuses.
+     * 4 points between 5 segments — 9 total elements (system limit).
+     * Boarding + Last Call share the same segment (progressIndex 2).
      *
-     * Points:  [0] Check In  [1] Board Soon  [2] Boarding  [3] Last Call  [4] Taking Off  [5] On The Way  [6] Arrival
-     * Segments:     seg 0         seg 1           seg 2         seg 3           seg 4           seg 5
-     *
-     * Error states show 0 progress.
+     * [seg0] ● [seg1] ● [seg2] ● [seg3] ● [seg4]
+     *       pt1      pt2      pt3      pt4
+     *    BoardSoon  Board/LC  TakeOff  OnTheWay
      */
     @RequiresApi(Build.VERSION_CODES.BAKLAVA)
     private fun buildProgressStyle(attributes: JourneyAttributes, state: JourneyContentState): Notification.ProgressStyle {
         val progressIndex = state.toProgressIndex()
 
-        val points = (0..6).map { i ->
-            Notification.ProgressStyle.Point(i * SEG_LEN)
-                .setColor(if (progressIndex >= i.coerceAtLeast(1)) greenColor else greyColor)
-        }
+        val point1 = Notification.ProgressStyle.Point(SEG_LEN).setColor(if (progressIndex >= 1) greenColor else greyColor)
+        val point2 = Notification.ProgressStyle.Point(SEG_LEN * 2).setColor(if (progressIndex >= 2) greenColor else greyColor)
+        val point3 = Notification.ProgressStyle.Point(SEG_LEN * 3).setColor(if (progressIndex >= 3) greenColor else greyColor)
+        val point4 = Notification.ProgressStyle.Point(SEG_LEN * 4).setColor(if (progressIndex >= 4) greenColor else greyColor)
 
-        val segments = (0 until 6).map { i ->
-            Notification.ProgressStyle.Segment(SEG_LEN)
-                .setColor(if (progressIndex > i) greenColor else greyColor)
-        }
+        val seg0 = Notification.ProgressStyle.Segment(SEG_LEN).setColor(if (progressIndex > 0) greenColor else greyColor)
+        val seg1 = Notification.ProgressStyle.Segment(SEG_LEN).setColor(if (progressIndex > 1) greenColor else greyColor)
+        val seg2 = Notification.ProgressStyle.Segment(SEG_LEN).setColor(if (progressIndex > 2) greenColor else greyColor)
+        val seg3 = Notification.ProgressStyle.Segment(SEG_LEN).setColor(if (progressIndex > 3) greenColor else greyColor)
+        val seg4 = Notification.ProgressStyle.Segment(SEG_LEN).setColor(if (progressIndex > 4) greenColor else greyColor)
 
         return Notification.ProgressStyle()
-            .setProgressPoints(points)
-            .setProgressSegments(segments)
+            .setProgressPoints(listOf(point1, point2, point3, point4))
+            .setProgressSegments(listOf(seg0, seg1, seg2, seg3, seg4))
             .setProgress(computeProgress(attributes, state))
             .setStyledByProgress(false)
     }
@@ -119,11 +123,11 @@ object LiveUpdateManager {
         JourneyStatus.CHECK_IN                ->  0
         JourneyStatus.BOARDING_SOON,
         JourneyStatus.BOARDING_DELAYED        ->  1
-        JourneyStatus.BOARDING                ->  2
-        JourneyStatus.LAST_CALL               ->  3
-        JourneyStatus.TAKING_OFF              ->  4
-        JourneyStatus.ON_THE_WAY              ->  5
-        JourneyStatus.ARRIVAL                 ->  6
+        JourneyStatus.BOARDING,
+        JourneyStatus.LAST_CALL               ->  2
+        JourneyStatus.TAKING_OFF              ->  3
+        JourneyStatus.ON_THE_WAY              ->  4
+        JourneyStatus.ARRIVAL                 ->  5
     }
 
     private fun computeProgress(attributes: JourneyAttributes, state: JourneyContentState): Int = when (state.status) {
@@ -132,10 +136,10 @@ object LiveUpdateManager {
         JourneyStatus.CHECK_IN         -> 0
         JourneyStatus.BOARDING_SOON,
         JourneyStatus.BOARDING_DELAYED -> SEG_LEN
-        JourneyStatus.BOARDING         -> SEG_LEN * 2
-        JourneyStatus.LAST_CALL        -> SEG_LEN * 3
-        JourneyStatus.TAKING_OFF       -> SEG_LEN * 4
-        JourneyStatus.ON_THE_WAY       -> SEG_LEN * 5 + (computeFlightFraction(attributes, state) * SEG_LEN).toInt()
+        JourneyStatus.BOARDING,
+        JourneyStatus.LAST_CALL        -> SEG_LEN * 2
+        JourneyStatus.TAKING_OFF       -> SEG_LEN * 3
+        JourneyStatus.ON_THE_WAY       -> SEG_LEN * 4 + (computeFlightFraction(attributes, state) * SEG_LEN).toInt()
         JourneyStatus.ARRIVAL          -> PROGRESS_MAX
     }
 
