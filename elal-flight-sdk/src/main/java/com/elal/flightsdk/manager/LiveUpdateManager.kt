@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.graphics.Color
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -98,12 +99,10 @@ object LiveUpdateManager {
     }
 
     /**
-     * Builds a ProgressStyle with 7 points and 6 segments representing the journey statuses.
+     * Builds a ProgressStyle with 5 points and 5 segments.
      *
-     * Points:  [0] Check In  [1] Board Soon  [2] Boarding  [3] Last Call  [4] Taking Off  [5] On The Way  [6] Arrival
-     * Segments:     seg 0         seg 1           seg 2         seg 3           seg 4           seg 5
-     *
-     * Error states show 0 progress.
+     * Points:  [1] Board Soon  [2] Boarding/Last Call  [3] Taking Off  [4] On The Way  [5] Arrival
+     * Segments:     seg 0             seg 1                 seg 2           seg 3          seg 4
      */
     @RequiresApi(36)
     private fun buildProgressStyle(
@@ -113,50 +112,44 @@ object LiveUpdateManager {
         val greenColor = 0xFF4CAF50.toInt()
         val greyColor = 0xFF9E9E9E.toInt()
 
-        val numSegments = 6
+        val numSegments = 5
         val segLen = PROGRESS_MAX / numSegments
 
         val progressIndex = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> -1
             JourneyStatus.CHECK_IN -> 0
             JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED -> 1
-            JourneyStatus.BOARDING -> 2
-            JourneyStatus.LAST_CALL -> 3
-            JourneyStatus.TAKING_OFF -> 4
-            JourneyStatus.ON_THE_WAY -> 5
-            JourneyStatus.ARRIVAL -> 6
+            JourneyStatus.BOARDING, JourneyStatus.LAST_CALL -> 2
+            JourneyStatus.TAKING_OFF -> 3
+            JourneyStatus.ON_THE_WAY -> 4
+            JourneyStatus.ARRIVAL -> 5
         }
 
-        val point0 = Notification.ProgressStyle.Point(0).setColor(if (progressIndex >= 0) greenColor else greyColor)
         val point1 = Notification.ProgressStyle.Point(segLen).setColor(if (progressIndex >= 1) greenColor else greyColor)
         val point2 = Notification.ProgressStyle.Point(segLen * 2).setColor(if (progressIndex >= 2) greenColor else greyColor)
         val point3 = Notification.ProgressStyle.Point(segLen * 3).setColor(if (progressIndex >= 3) greenColor else greyColor)
         val point4 = Notification.ProgressStyle.Point(segLen * 4).setColor(if (progressIndex >= 4) greenColor else greyColor)
-        val point5 = Notification.ProgressStyle.Point(segLen * 5).setColor(if (progressIndex >= 5) greenColor else greyColor)
-        val point6 = Notification.ProgressStyle.Point(PROGRESS_MAX).setColor(if (progressIndex >= 6) greenColor else greyColor)
 
-        val lastSegLen = PROGRESS_MAX - segLen * (numSegments - 1)
         val seg0 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 0) greenColor else greyColor)
         val seg1 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 1) greenColor else greyColor)
         val seg2 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 2) greenColor else greyColor)
         val seg3 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 3) greenColor else greyColor)
         val seg4 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 4) greenColor else greyColor)
-        val seg5 = Notification.ProgressStyle.Segment(lastSegLen).setColor(if (progressIndex >= 6) greenColor else greyColor)
 
         val progress = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> 0
             JourneyStatus.CHECK_IN -> 0
             JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED -> segLen
             JourneyStatus.BOARDING -> segLen * 2
-            JourneyStatus.LAST_CALL -> segLen * 3
-            JourneyStatus.TAKING_OFF -> segLen * 4
-            JourneyStatus.ON_THE_WAY -> segLen * 5 + (computeFlightProgress(attributes, state) * segLen).toInt()
+            JourneyStatus.LAST_CALL -> segLen * 2
+            JourneyStatus.TAKING_OFF -> segLen * 3
+            JourneyStatus.ON_THE_WAY -> segLen * 4 + (computeFlightProgress(attributes, state) * segLen).toInt()
             JourneyStatus.ARRIVAL -> PROGRESS_MAX
         }
 
         return Notification.ProgressStyle()
-            .setProgressPoints(listOf(point0, point1, point2, point3, point4, point5, point6))
-            .setProgressSegments(listOf(seg0, seg1, seg2, seg3, seg4, seg5))
+            .setProgressPoints(listOf(point1, point2, point3, point4))
+            .setProgressSegments(listOf(seg0, seg1, seg2, seg3, seg4))
             .setProgress(progress)
             .setStyledByProgress(false)
     }
