@@ -4,9 +4,8 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.graphics.drawable.Icon
 import android.os.Build
-import android.widget.RemoteViews
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
@@ -14,7 +13,9 @@ import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
 
 /**
- * Manages the lifecycle of Android 16 Live Update notifications using Notification.ProgressStyle.
+ * Manages the lifecycle of Live Update notifications.
+ * On Android 16+ (API 36) uses Notification.ProgressStyle for the native progress UI.
+ * On older devices shows a plain notification with title and content text only.
  * Mirrors the iOS LiveActivityManager pattern: start → update → end.
  */
 object LiveUpdateManager {
@@ -73,79 +74,30 @@ object LiveUpdateManager {
         val nm = context.getSystemService(NotificationManager::class.java)
         val contentText = buildContentText(state)
         val statusBarText = buildStatusBarText(attributes, state)
-        val remoteViews = buildRemoteViews(context, state, statusBarText, contentText)
 
-        // XML RemoteViews replica used for all Android versions.
-        // Android 16 native Notification.ProgressStyle is preserved in buildProgressStyle()
-        // below for future reference.
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(statusBarText)
-            .setContentText(contentText)
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(remoteViews)        // shows in collapsed state
-            .setCustomBigContentView(remoteViews)     // shows in expanded state
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-            .setOngoing(true)
-            .build()
+        val notification = if (Build.VERSION.SDK_INT >= 36) {
+            Notification.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(statusBarText)
+                .setContentText(contentText)
+                .setStyle(buildProgressStyle(attributes, state))
+                .setCategory(Notification.CATEGORY_TRANSPORT)
+                .setOngoing(true)
+                .build()
+        } else {
+            NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(statusBarText)
+                .setContentText(contentText)
+                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                .setOngoing(true)
+                .build()
+        }
+
         nm.notify(NOTIFICATION_ID, notification)
     }
 
-    private fun buildRemoteViews(
-        context: Context,
-        state: JourneyContentState,
-        title: String,
-        content: String
-    ): RemoteViews {
-        val views = RemoteViews(context.packageName, R.layout.notification_progress_bar)
-        views.setTextViewText(R.id.notif_title, title)
-        views.setTextViewText(R.id.notif_content, content)
-
-        val progressIndex = when (state.status) {
-            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> -1
-            JourneyStatus.CHECK_IN -> 0
-            JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED -> 1
-            JourneyStatus.BOARDING -> 2
-            JourneyStatus.LAST_CALL -> 3
-            JourneyStatus.TAKING_OFF -> 4
-            JourneyStatus.ON_THE_WAY -> 5
-            JourneyStatus.ARRIVAL -> 6
-        }
-
-        val dotIds = listOf(
-            R.id.notif_dot_0, R.id.notif_dot_1, R.id.notif_dot_2, R.id.notif_dot_3,
-            R.id.notif_dot_4, R.id.notif_dot_5, R.id.notif_dot_6
-        )
-        val segIds = listOf(
-            R.id.notif_seg_0, R.id.notif_seg_1, R.id.notif_seg_2,
-            R.id.notif_seg_3, R.id.notif_seg_4, R.id.notif_seg_5
-        )
-
-        dotIds.forEachIndexed { i, id ->
-            views.setInt(id, "setBackgroundResource",
-                if (progressIndex >= i) R.drawable.notification_dot_active
-                else R.drawable.notification_dot_inactive)
-        }
-
-        segIds.forEachIndexed { i, id ->
-            views.setInt(id, "setBackgroundResource",
-                if (progressIndex > i) R.drawable.notification_seg_active
-                else R.drawable.notification_seg_inactive)
-        }
-
-        return views
-    }
-
     /**
-     * Android 16 native implementation kept for reference.
-     * The XML RemoteViews in buildRemoteViews() mirrors all of these customizations:
-     *   - ProgressStyle.Point  × 7  → notif_dot_0…6  (green/grey oval drawables)
-     *   - ProgressStyle.Segment × 6 → notif_seg_0…5  (green/grey rounded-rect drawables)
-     *   - setStyledByProgress(false) → colors set explicitly per dot/segment, not derived from progress value
-     *   - setProgress()              → progressIndex drives which dots/segments are active
-     *   - CATEGORY_TRANSPORT         → set identically on NotificationCompat builder
-     *   - setOngoing(true)           → set identically on NotificationCompat builder
-     *
      * Builds a ProgressStyle with 7 points and 6 segments representing the journey statuses.
      *
      * Points:  [0] Check In  [1] Board Soon  [2] Boarding  [3] Last Call  [4] Taking Off  [5] On The Way  [6] Arrival
@@ -153,22 +105,17 @@ object LiveUpdateManager {
      *
      * Error states show 0 progress.
      */
-    private fun computeFlightProgress(attributes: JourneyAttributes, state: JourneyContentState): Double {
-        val eta = state.estimatedArrivalTime ?: return 0.0
-        val total = eta.epochSecond - attributes.scheduledDepartureTime.epochSecond
-        if (total <= 0) return 0.0
-        val elapsed = java.time.Instant.now().epochSecond - attributes.scheduledDepartureTime.epochSecond
-        return (elapsed.toDouble() / total).coerceIn(0.0, 1.0)
-    }
-
-    private fun buildProgressStyle(attributes: JourneyAttributes, state: JourneyContentState): Notification.ProgressStyle {
+    @RequiresApi(36)
+    private fun buildProgressStyle(
+        attributes: JourneyAttributes,
+        state: JourneyContentState
+    ): Notification.ProgressStyle {
         val greenColor = 0xFF4CAF50.toInt()
         val greyColor = 0xFF9E9E9E.toInt()
 
         val numSegments = 6
         val segLen = PROGRESS_MAX / numSegments
 
-        // Map status to a progress index (0-based point index)
         val progressIndex = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> -1
             JourneyStatus.CHECK_IN -> 0
@@ -180,46 +127,21 @@ object LiveUpdateManager {
             JourneyStatus.ARRIVAL -> 6
         }
 
-        val point0 = Notification.ProgressStyle.Point(0).setColor(
-            if (progressIndex >= 0) greenColor else greyColor
-        )
-        val point1 = Notification.ProgressStyle.Point(segLen).setColor(
-            if (progressIndex >= 1) greenColor else greyColor
-        )
-        val point2 = Notification.ProgressStyle.Point(segLen * 2).setColor(
-            if (progressIndex >= 2) greenColor else greyColor
-        )
-        val point3 = Notification.ProgressStyle.Point(segLen * 3).setColor(
-            if (progressIndex >= 3) greenColor else greyColor
-        )
-        val point4 = Notification.ProgressStyle.Point(segLen * 4).setColor(
-            if (progressIndex >= 4) greenColor else greyColor
-        )
-        val point5 = Notification.ProgressStyle.Point(segLen * 5).setColor(
-            if (progressIndex >= 5) greenColor else greyColor
-        )
-        val point6 = Notification.ProgressStyle.Point(PROGRESS_MAX).setColor(
-            if (progressIndex >= 6) greenColor else greyColor
-        )
+        val point0 = Notification.ProgressStyle.Point(0).setColor(if (progressIndex >= 0) greenColor else greyColor)
+        val point1 = Notification.ProgressStyle.Point(segLen).setColor(if (progressIndex >= 1) greenColor else greyColor)
+        val point2 = Notification.ProgressStyle.Point(segLen * 2).setColor(if (progressIndex >= 2) greenColor else greyColor)
+        val point3 = Notification.ProgressStyle.Point(segLen * 3).setColor(if (progressIndex >= 3) greenColor else greyColor)
+        val point4 = Notification.ProgressStyle.Point(segLen * 4).setColor(if (progressIndex >= 4) greenColor else greyColor)
+        val point5 = Notification.ProgressStyle.Point(segLen * 5).setColor(if (progressIndex >= 5) greenColor else greyColor)
+        val point6 = Notification.ProgressStyle.Point(PROGRESS_MAX).setColor(if (progressIndex >= 6) greenColor else greyColor)
 
-        val seg0 = Notification.ProgressStyle.Segment(segLen).setColor(
-            if (progressIndex > 0) greenColor else greyColor
-        )
-        val seg1 = Notification.ProgressStyle.Segment(segLen).setColor(
-            if (progressIndex > 1) greenColor else greyColor
-        )
-        val seg2 = Notification.ProgressStyle.Segment(segLen).setColor(
-            if (progressIndex > 2) greenColor else greyColor
-        )
-        val seg3 = Notification.ProgressStyle.Segment(segLen).setColor(
-            if (progressIndex > 3) greenColor else greyColor
-        )
-        val seg4 = Notification.ProgressStyle.Segment(segLen).setColor(
-            if (progressIndex > 4) greenColor else greyColor
-        )
-        val seg5 = Notification.ProgressStyle.Segment(segLen).setColor(
-            if (progressIndex >= 6) greenColor else greyColor
-        )
+        val lastSegLen = PROGRESS_MAX - segLen * (numSegments - 1)
+        val seg0 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 0) greenColor else greyColor)
+        val seg1 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 1) greenColor else greyColor)
+        val seg2 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 2) greenColor else greyColor)
+        val seg3 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 3) greenColor else greyColor)
+        val seg4 = Notification.ProgressStyle.Segment(segLen).setColor(if (progressIndex > 4) greenColor else greyColor)
+        val seg5 = Notification.ProgressStyle.Segment(lastSegLen).setColor(if (progressIndex >= 6) greenColor else greyColor)
 
         val progress = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> 0
@@ -237,6 +159,14 @@ object LiveUpdateManager {
             .setProgressSegments(listOf(seg0, seg1, seg2, seg3, seg4, seg5))
             .setProgress(progress)
             .setStyledByProgress(false)
+    }
+
+    private fun computeFlightProgress(attributes: JourneyAttributes, state: JourneyContentState): Double {
+        val eta = state.estimatedArrivalTime ?: return 0.0
+        val total = eta.epochSecond - attributes.scheduledDepartureTime.epochSecond
+        if (total <= 0) return 0.0
+        val elapsed = java.time.Instant.now().epochSecond - attributes.scheduledDepartureTime.epochSecond
+        return (elapsed.toDouble() / total).coerceIn(0.0, 1.0)
     }
 
     private fun buildContentText(state: JourneyContentState): String {

@@ -1,0 +1,691 @@
+package com.elal.demoapp.ui.journey
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.elal.demoapp.ui.theme.ElAlDemoTheme
+import com.elal.flightsdk.model.JourneyAttributes
+import com.elal.flightsdk.model.JourneyContentState
+import com.elal.flightsdk.model.JourneyStatus
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.util.Date
+import java.util.Locale
+import kotlin.math.pow
+
+// region Design Colors (matching iOS DesignColors)
+private object DesignColors {
+    val topBg = Color(0xCC000000)
+    val bottomBarDark = Color(0x99000000)
+    val bottomBarYellow = Color(0xF2FEC630)
+    val onTimeGreen = Color(0xFF2BA45F)
+    val delayedYellow = Color(0xFFFEC630)
+    val errorGrey = Color(0xFF6C6C6C)
+    val lightText = Color(0xFFF0F2FA)
+    val dimmedText = Color.White.copy(alpha = 0.4f)
+    val subtitleLight = Color(0xFFE9E9E9)
+    val terminalPillBg = Color.White.copy(alpha = 0.07f)
+    val centerBadgeBg = Color.White.copy(alpha = 0.1f)
+    val darkText = Color(0xFF2C2C2E)
+    val rightLabelColor = Color(0xFFDADDE8)
+}
+// endregion
+
+// region Helpers
+private fun formatTime(instant: Instant): String {
+    val fmt = SimpleDateFormat("HH:mm", Locale.US)
+    return fmt.format(Date.from(instant))
+}
+
+private fun landingSubtitle(estimatedArrival: Instant?): String {
+    val eta = estimatedArrival ?: return "Landing time TBD"
+    val intervalMs = eta.toEpochMilli() - System.currentTimeMillis()
+    if (intervalMs <= 0) return "Landing now"
+    val hours = (intervalMs / 3_600_000).toInt()
+    val minutes = ((intervalMs % 3_600_000) / 60_000).toInt()
+    return if (hours > 0) "Landing in ${hours}h ${minutes} min" else "Landing in ${minutes} min"
+}
+
+private fun statusTimeColor(status: JourneyStatus): Color = Color(status.timeColor)
+private fun statusPillBg(status: JourneyStatus): Color = Color(status.statusPillBgColor)
+private fun statusPillFg(status: JourneyStatus): Color = Color(status.statusPillFgColor)
+private fun bottomBarBg(status: JourneyStatus): Color = Color(status.bottomBarBgColor)
+private fun bottomBarFg(status: JourneyStatus): Color = Color(status.bottomBarFgColor)
+private fun bottomBarSub(status: JourneyStatus): Color = Color(status.bottomBarSubtitleColor)
+// endregion
+
+// region Full Screen
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JourneyCardScreen(
+    attributes: JourneyAttributes,
+    state: JourneyContentState,
+    onClose: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("${attributes.flightNumber} · ${state.status.displayName}") },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1B358F),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF0D1B3E))
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            JourneyCardView(attributes = attributes, state = state)
+        }
+    }
+}
+// endregion
+
+// region Journey Card View (main card — matches iOS JourneyCardView)
+@Composable
+fun JourneyCardView(
+    attributes: JourneyAttributes,
+    state: JourneyContentState
+) {
+    Column {
+        TopSection(attributes, state)
+        BottomBar(attributes, state)
+    }
+}
+
+@Composable
+private fun TopSection(
+    attributes: JourneyAttributes,
+    state: JourneyContentState
+) {
+    val status = state.status
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp))
+            .background(DesignColors.topBg)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 17.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            HeaderRow(attributes.flightNumber, status)
+            FlightInfoRow(attributes, state)
+        }
+    }
+}
+
+@Composable
+private fun HeaderRow(flightNumber: String, status: JourneyStatus) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "✡ EL AL",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = DesignColors.lightText
+            )
+            Text(
+                text = flightNumber,
+                fontSize = 11.sp,
+                color = DesignColors.lightText
+            )
+        }
+
+        Text(
+            text = status.statusPillText,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Medium,
+            color = statusPillFg(status),
+            modifier = Modifier
+                .background(statusPillBg(status), RoundedCornerShape(50))
+                .padding(horizontal = 7.dp, vertical = 5.dp)
+        )
+    }
+}
+
+@Composable
+private fun FlightInfoRow(
+    attributes: JourneyAttributes,
+    state: JourneyContentState
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        DepartureColumn(
+            code = attributes.departureAirportCode,
+            scheduledTime = attributes.scheduledDepartureTime,
+            estimatedTime = state.estimatedDepartureTime,
+            terminal = attributes.departureTerminal,
+            status = state.status,
+            modifier = Modifier.weight(1f)
+        )
+
+        CenterColumn(
+            status = state.status,
+            scheduledDeparture = attributes.scheduledDepartureTime,
+            estimatedArrival = state.estimatedArrivalTime ?: attributes.scheduledArrivalTime,
+            modifier = Modifier.weight(1f)
+        )
+
+        ArrivalColumn(
+            code = attributes.arrivalAirportCode,
+            scheduledTime = attributes.scheduledArrivalTime,
+            estimatedTime = state.estimatedArrivalTime,
+            terminal = attributes.arrivalTerminal,
+            status = state.status,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+// endregion
+
+// region Departure Column
+@Composable
+private fun DepartureColumn(
+    code: String,
+    scheduledTime: Instant,
+    estimatedTime: Instant?,
+    terminal: String?,
+    status: JourneyStatus,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = code, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = DesignColors.lightText)
+            TimeDisplay(scheduledTime, estimatedTime, status)
+        }
+        terminal?.let { TerminalPill(it) }
+    }
+}
+// endregion
+
+// region Arrival Column
+@Composable
+private fun ArrivalColumn(
+    code: String,
+    scheduledTime: Instant,
+    estimatedTime: Instant?,
+    terminal: String?,
+    status: JourneyStatus,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            TimeDisplay(scheduledTime, estimatedTime, status)
+            Text(text = code, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = DesignColors.lightText)
+        }
+        terminal?.let { TerminalPill(it) }
+    }
+}
+// endregion
+
+// region Time Display
+@Composable
+private fun TimeDisplay(
+    scheduledTime: Instant,
+    estimatedTime: Instant?,
+    status: JourneyStatus
+) {
+    if (status.isDelayed && estimatedTime != null) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(
+                text = formatTime(estimatedTime),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = statusTimeColor(status)
+            )
+            Text(
+                text = formatTime(scheduledTime),
+                fontSize = 11.sp,
+                color = DesignColors.dimmedText,
+                textDecoration = TextDecoration.LineThrough
+            )
+        }
+    } else {
+        Text(
+            text = formatTime(scheduledTime),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = statusTimeColor(status)
+        )
+    }
+}
+// endregion
+
+// region Terminal Pill
+@Composable
+private fun TerminalPill(terminal: String) {
+    Row(
+        modifier = Modifier
+            .background(DesignColors.terminalPillBg, RoundedCornerShape(50))
+            .padding(horizontal = 5.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        Icon(
+            Icons.Default.LocationOn,
+            contentDescription = null,
+            modifier = Modifier.size(6.dp),
+            tint = Color.White.copy(alpha = 0.7f)
+        )
+        Text(
+            text = "Terminal $terminal",
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.7f)
+        )
+    }
+}
+// endregion
+
+// region Center Column (flight path + badge)
+@Composable
+private fun CenterColumn(
+    status: JourneyStatus,
+    scheduledDeparture: Instant,
+    estimatedArrival: Instant,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        FlightPathView(scheduledDeparture, estimatedArrival)
+        StatusBadge(status)
+    }
+}
+
+@Composable
+private fun FlightPathView(
+    scheduledDeparture: Instant,
+    estimatedArrival: Instant
+) {
+    val now = Instant.now()
+    val total = estimatedArrival.toEpochMilli() - scheduledDeparture.toEpochMilli()
+    val elapsed = now.toEpochMilli() - scheduledDeparture.toEpochMilli()
+    val progress = if (total > 0) (elapsed.toFloat() / total).coerceIn(0f, 1f) else 0f
+
+    Canvas(modifier = Modifier.size(width = 100.dp, height = 28.dp)) {
+        val w = size.width
+        val h = size.height
+
+        val pathDash = PathEffect.dashPathEffect(floatArrayOf(6f, 8f), 0f)
+        val steps = 50
+        for (i in 0 until steps) {
+            val t1 = i.toFloat() / steps
+            val t2 = (i + 1).toFloat() / steps
+            val x1 = t1 * w
+            val x2 = t2 * w
+            val y1 = h * 0.1f + h * 0.8f * (2f * t1 - 1f).pow(2)
+            val y2 = h * 0.1f + h * 0.8f * (2f * t2 - 1f).pow(2)
+            drawLine(
+                color = Color(0xFFB5B5B5),
+                start = Offset(x1, y1),
+                end = Offset(x2, y2),
+                strokeWidth = 2f,
+                pathEffect = pathDash,
+                cap = StrokeCap.Round
+            )
+        }
+
+        val planeT = progress
+        val planeX = planeT * w
+        val planeY = h * 0.1f + h * 0.8f * (2f * planeT - 1f).pow(2)
+        drawCircle(
+            color = Color.White,
+            radius = 8f,
+            center = Offset(planeX, planeY)
+        )
+        drawCircle(
+            color = Color(0xFF1B358F),
+            radius = 5f,
+            center = Offset(planeX, planeY)
+        )
+    }
+}
+
+@Composable
+private fun StatusBadge(status: JourneyStatus) {
+    Text(
+        text = status.badgeLabel,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = Color(0xFFF1F1F1),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .background(DesignColors.centerBadgeBg, RoundedCornerShape(3.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    )
+}
+// endregion
+
+// region Bottom Bar (matches iOS BottomBarConfig)
+@Composable
+private fun BottomBar(
+    attributes: JourneyAttributes,
+    state: JourneyContentState
+) {
+    val status = state.status
+    val isYellow = status == JourneyStatus.BOARDING || status == JourneyStatus.LAST_CALL
+    val bgColor = if (isYellow) DesignColors.bottomBarYellow else DesignColors.bottomBarDark
+    val fgColor = bottomBarFg(status)
+    val subColor = bottomBarSub(status)
+
+    val config = bottomBarConfig(status, state, attributes)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 23.dp, bottomEnd = 23.dp))
+            .background(bgColor)
+            .padding(horizontal = 17.dp)
+            .height(57.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(text = config.icon, fontSize = 20.sp)
+
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    text = config.title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = fgColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                config.subtitle?.let {
+                    Text(
+                        text = it,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Light,
+                        color = subColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        config.rightValue?.let { value ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = value,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = fgColor
+                )
+                config.rightLabel?.let { label ->
+                    Text(
+                        text = label,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Light,
+                        color = DesignColors.rightLabelColor
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class BottomBarUiConfig(
+    val icon: String,
+    val title: String,
+    val subtitle: String?,
+    val rightValue: String?,
+    val rightLabel: String?
+)
+
+private fun bottomBarConfig(
+    status: JourneyStatus,
+    state: JourneyContentState,
+    attributes: JourneyAttributes
+): BottomBarUiConfig = when (status) {
+    JourneyStatus.CHECK_IN -> BottomBarUiConfig(
+        icon = "🧳",
+        title = "With Baggage",
+        subtitle = "Carry-on only",
+        rightValue = state.checkInDesk ?: "D78 - 99",
+        rightLabel = null
+    )
+    JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED, JourneyStatus.BOARDING -> BottomBarUiConfig(
+        icon = "🚪",
+        title = "Boarding will be called by groups",
+        subtitle = "Your group - Group ${state.boardingGroup ?: "--"}",
+        rightValue = state.gate ?: "--",
+        rightLabel = "Gate"
+    )
+    JourneyStatus.LAST_CALL -> BottomBarUiConfig(
+        icon = "🔔",
+        title = "Gate is closing",
+        subtitle = "No boarding after the gate closes",
+        rightValue = state.gate ?: "--",
+        rightLabel = "Gate"
+    )
+    JourneyStatus.TAKING_OFF, JourneyStatus.ON_THE_WAY -> BottomBarUiConfig(
+        icon = "✈️",
+        title = "On the way to - ${attributes.arrivalCity}",
+        subtitle = landingSubtitle(state.estimatedArrivalTime),
+        rightValue = state.terminal ?: attributes.arrivalTerminal ?: "--",
+        rightLabel = "Terminal"
+    )
+    JourneyStatus.ARRIVAL -> BottomBarUiConfig(
+        icon = "🎉",
+        title = "Welcome to ${attributes.arrivalCity}!",
+        subtitle = null,
+        rightValue = null,
+        rightLabel = null
+    )
+    JourneyStatus.CONNECTION_ERROR -> BottomBarUiConfig(
+        icon = "📡",
+        title = "You seem to be offline.",
+        subtitle = "Check your connection",
+        rightValue = null,
+        rightLabel = null
+    )
+    JourneyStatus.GENERAL_ERROR -> BottomBarUiConfig(
+        icon = "⚠️",
+        title = "Error has occurred",
+        subtitle = null,
+        rightValue = null,
+        rightLabel = null
+    )
+}
+// endregion
+
+// region Previews
+
+private fun previewAttributes() = JourneyAttributes(
+    flightNumber = "LY 317",
+    airline = "El Al",
+    passengerName = "Israel Israeli",
+    departureAirportCode = "TLV",
+    departureCity = "Tel Aviv",
+    arrivalAirportCode = "JFK",
+    arrivalCity = "New York",
+    scheduledDepartureTime = Instant.now().plus(2, ChronoUnit.HOURS),
+    scheduledArrivalTime = Instant.now().plus(13, ChronoUnit.HOURS),
+    departureTerminal = "3",
+    arrivalTerminal = "1"
+)
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardCheckInPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.CHECK_IN,
+                checkInDesk = "A108"
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardBoardingDelayedPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.BOARDING_DELAYED,
+                delayMinutes = 25,
+                gate = "D3",
+                boardingGroup = "1",
+                estimatedDepartureTime = Instant.now().plus(145, ChronoUnit.MINUTES)
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardBoardingPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.BOARDING,
+                gate = "D3",
+                boardingGroup = "1",
+                estimatedDepartureTime = Instant.now().plus(145, ChronoUnit.MINUTES)
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardLastCallPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.LAST_CALL,
+                gate = "D3"
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardOnTheWayPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.ON_THE_WAY,
+                estimatedArrivalTime = Instant.now().plus(11, ChronoUnit.HOURS)
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardArrivalPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.ARRIVAL,
+                terminal = "1",
+                estimatedArrivalTime = Instant.now()
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardConnectionErrorPreview() {
+    ElAlDemoTheme {
+        JourneyCardView(
+            attributes = previewAttributes(),
+            state = JourneyContentState(status = JourneyStatus.CONNECTION_ERROR)
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "iw")
+@Composable
+fun JourneyCardScreenPreview() {
+    ElAlDemoTheme {
+        JourneyCardScreen(
+            attributes = previewAttributes(),
+            state = JourneyContentState(
+                status = JourneyStatus.ON_THE_WAY,
+                estimatedArrivalTime = Instant.now().plus(11, ChronoUnit.HOURS)
+            ),
+            onClose = {}
+        )
+    }
+}
+
+// endregion
