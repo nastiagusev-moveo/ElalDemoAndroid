@@ -149,14 +149,14 @@ object LiveUpdateManager {
     }
 
     private fun buildContentText(state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN          -> "With Baggage · ${state.checkInDesk ?: "--"}"
-        JourneyStatus.BOARDING_SOON     -> "Wait for boarding to open · Gate ${state.gate ?: "--"}"
-        JourneyStatus.BOARDING_DELAYED  -> "Wait for boarding to open · Gate ${state.gate ?: "--"}"
-        JourneyStatus.BOARDING          -> "Boarding by groups · Group ${state.boardingGroup ?: "--"} · Gate ${state.gate ?: "--"}"
-        JourneyStatus.LAST_CALL         -> "Gate is closing · No boarding after gate closes · Gate ${state.gate ?: "--"}"
+        JourneyStatus.CHECK_IN          -> "With Baggage • ${state.checkInDesk ?: "--"}"
+        JourneyStatus.BOARDING_SOON     -> "Wait for boarding to open • Gate ${state.gate ?: "--"}"
+        JourneyStatus.BOARDING_DELAYED  -> "Wait for boarding to open • Gate ${state.gate ?: "--"}"
+        JourneyStatus.BOARDING          -> "Boarding by groups • Group ${state.boardingGroup ?: "--"} • Gate ${state.gate ?: "--"}"
+        JourneyStatus.LAST_CALL         -> "Gate is closing • No boarding after gate closes • Gate ${state.gate ?: "--"}"
         JourneyStatus.TAKING_OFF        -> "Please take a seat"
-        JourneyStatus.ON_THE_WAY        -> "On the way · ETA ${state.estimatedArrivalTime ?: "--"}"
-        JourneyStatus.ARRIVAL           -> "Welcome! · Terminal ${state.terminal ?: "--"}"
+        JourneyStatus.ON_THE_WAY        -> "On the way • ETA ${state.estimatedArrivalTime ?: "--"}"
+        JourneyStatus.ARRIVAL           -> "Welcome! • Terminal ${state.terminal ?: "--"}"
         JourneyStatus.CONNECTION_ERROR  -> "You seem to be offline. Check your connection."
         JourneyStatus.GENERAL_ERROR     -> "Error has occurred"
     }
