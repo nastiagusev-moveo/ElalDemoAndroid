@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
+    !! Just For View !!
+    !! Not Used Anywhere In The Project !!
+    TODO: Can Be Deleted
+    ______________________________________________________________________
     XML replica of Android 16 Notification.ProgressStyle.
     Android 16 features mirrored here:
-      - 7 milestone Points (dot views)  → notif_dot_0 … notif_dot_6
-      - 6 Segments between points       → notif_seg_0 … notif_seg_5
-      - Green (#4CAF50) = completed     → notification_dot_active / notification_seg_active
-      - Grey  (#9E9E9E) = pending        → notification_dot_inactive / notification_seg_inactive
-      - setStyledByProgress(false)      → colors are set explicitly per-dot/per-segment, not derived from a single progress value
-      - CATEGORY_TRANSPORT              → set on the NotificationCompat builder
-      - setOngoing(true)                → set on the NotificationCompat builder
+      - 4 Segments (no Points)            → notif_seg_0 … notif_seg_3
+      - Green (#4CAF50) = completed       → notification_seg_active
+      - Grey  (#9E9E9E) = pending         → notification_seg_inactive
+      - Step 1 CHECK_IN:                  nothing green
+      - Step 2 BOARDING_SOON/BOARDING/LAST_CALL: seg0 green
+      - Step 3 TAKING_OFF:                seg0 + seg1 green
+      - Step 4 ON_THE_WAY:                seg0 + seg1 + seg2 green
+      - Step 5 ARRIVAL:                   all 4 segments green
+      - setStyledByProgress(false)        → colors set explicitly per-segment
+      - CATEGORY_TRANSPORT                → set on the NotificationCompat builder
+      - setOngoing(true)                  → set on the NotificationCompat builder
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -40,9 +48,7 @@
         android:ellipsize="end" />
 
     <!--
-        Progress row: mirrors Notification.ProgressStyle
-        Dots   = ProgressStyle.Point   (fixed 12×12dp circles)
-        Spaces = ProgressStyle.Segment (weighted width, 4dp tall, rounded ends)
+        Progress row: mirrors Notification.ProgressStyle (segments only, no points)
     -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -52,12 +58,6 @@
         android:layout_marginTop="10dp">
 
         <ImageView
-            android:id="@+id/notif_dot_0"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
-
-        <ImageView
             android:id="@+id/notif_seg_0"
             android:layout_width="0dp"
             android:layout_height="4dp"
@@ -65,75 +65,28 @@
             android:background="@drawable/notification_seg_inactive" />
 
         <ImageView
-            android:id="@+id/notif_dot_1"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
-
-        <ImageView
             android:id="@+id/notif_seg_1"
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
+            android:layout_marginStart="2dp"
             android:background="@drawable/notification_seg_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_dot_2"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
 
         <ImageView
             android:id="@+id/notif_seg_2"
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
+            android:layout_marginStart="2dp"
             android:background="@drawable/notification_seg_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_dot_3"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
 
         <ImageView
             android:id="@+id/notif_seg_3"
             android:layout_width="0dp"
             android:layout_height="4dp"
             android:layout_weight="1"
+            android:layout_marginStart="2dp"
             android:background="@drawable/notification_seg_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_dot_4"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_seg_4"
-            android:layout_width="0dp"
-            android:layout_height="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/notification_seg_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_dot_5"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_seg_5"
-            android:layout_width="0dp"
-            android:layout_height="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/notification_seg_inactive" />
-
-        <ImageView
-            android:id="@+id/notif_dot_6"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/notification_dot_inactive" />
 
     </LinearLayout>
 
