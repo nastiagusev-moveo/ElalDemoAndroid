@@ -2,6 +2,7 @@ package com.elal.flightsdk.manager
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.ProgressStyle
@@ -15,7 +16,6 @@ import com.elal.flightsdk.model.JourneyStatus
  * Uses NotificationCompat throughout — ProgressStyle renders on Android 16+ automatically,
  * falls back to plain title + content text on older devices.
  * No need to check Build.VERSION.SDK_INT for crashes — the compat library handles that.
- * Mirrors the iOS LiveActivityManager pattern: start → update → end.
  */
 object LiveUpdateManager {
 
@@ -28,6 +28,10 @@ object LiveUpdateManager {
 
     private var currentAttributes: JourneyAttributes? = null
     val isActive: Boolean get() = currentAttributes != null
+
+    // TODO: DEBUG - Remove before release
+    var debugNextStageIntent: PendingIntent? = null
+    //
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -75,9 +79,14 @@ object LiveUpdateManager {
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
-            .build()
+            //.build() // TODO: DEBUG - revert
 
-        nm.notify(NOTIFICATION_ID, notification)
+        // TODO: DEBUG - Remove before release
+        debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
+        //
+
+        nm.notify(NOTIFICATION_ID, notification.build())
+//        nm.notify(NOTIFICATION_ID, notification) // TODO: DEBUG - revert
     }
 
     /**
@@ -136,14 +145,14 @@ object LiveUpdateManager {
     }
 
     private fun buildContentText(state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN         -> "With Baggage • ${state.checkInDesk ?: "--"}"
-        JourneyStatus.BOARDING_SOON    -> "Wait for boarding to open • Gate : ${state.gate ?: "--"}"
-        JourneyStatus.BOARDING_DELAYED -> "Wait for boarding to open • Gate : ${state.gate ?: "--"}"
-        JourneyStatus.BOARDING         -> "Boarding by groups • Group ${state.boardingGroup ?: "--"} • Gate ${state.gate ?: "--"}"
-        JourneyStatus.LAST_CALL        -> "Gate is closing • Gate : ${state.gate ?: "--"}"
+        JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk ?: "--"}"
+        JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate ?: "--"}"
+        JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate ?: "--"}"
+        JourneyStatus.BOARDING         -> "Your zone: ${state.boardingZone ?: "--"}"
+        JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate ?: "--"}"
         JourneyStatus.TAKING_OFF       -> "Please take a seat"
-        JourneyStatus.ON_THE_WAY       -> "On the way • ETA ${state.estimatedArrivalTime ?: "--"}"
-        JourneyStatus.ARRIVAL          -> "Welcome! • Terminal ${state.terminal ?: "--"}"
+        JourneyStatus.ON_THE_WAY       -> "Landing in ${state.estimatedArrivalTime ?: "--"}"
+        JourneyStatus.ARRIVAL          -> "Baggage claim will be at carousel: ${state.terminal ?: "--"}"
         JourneyStatus.CONNECTION_ERROR -> "You seem to be offline. Check your connection."
         JourneyStatus.GENERAL_ERROR    -> "Error has occurred"
     }
@@ -156,22 +165,29 @@ object LiveUpdateManager {
 //        else                           -> null
 //    }
 //
-//    private fun formatTime(instant: java.time.Instant?): String {
-//        if (instant == null) return "--"
-//        val local = instant.atZone(java.time.ZoneId.systemDefault())
-//        return "%d:%02d".format(local.hour, local.minute)
-//    }
+    private fun formatTime(instant: java.time.Instant?): String {
+        if (instant == null) return "--"
+        val local = instant.atZone(java.time.ZoneId.systemDefault())
+        return "%d:%02d".format(local.hour, local.minute)
+    }
 
-    private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN         -> "${attributes.flightNumber} Check In"
-        JourneyStatus.BOARDING_SOON    -> "${attributes.flightNumber} Boarding Soon"
-        JourneyStatus.BOARDING_DELAYED -> "${attributes.flightNumber} Boarding Delayed"
-        JourneyStatus.BOARDING         -> "${attributes.flightNumber} Boarding"
-        JourneyStatus.LAST_CALL        -> "${attributes.flightNumber} Last Call"
-        JourneyStatus.TAKING_OFF       -> "${attributes.flightNumber} Taking Off"
-        JourneyStatus.ON_THE_WAY       -> "${attributes.flightNumber} On The Way"
-        JourneyStatus.ARRIVAL          -> "${attributes.flightNumber} Arrival"
-        JourneyStatus.CONNECTION_ERROR -> "${attributes.flightNumber} Connection Error"
-        JourneyStatus.GENERAL_ERROR    -> "${attributes.flightNumber} Error"
+    private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String {
+        val depTime = formatTime(attributes.scheduledDepartureTime)
+        val arrTime = formatTime(
+            state.estimatedArrivalTime ?: attributes.scheduledArrivalTime
+        )
+        val flightNumber = attributes.flightNumber
+        return when (state.status) {
+            JourneyStatus.CHECK_IN         -> "$flightNumber • $depTime • Baggage drop"
+            JourneyStatus.BOARDING_SOON    -> "$flightNumber • $depTime • Boarding Soon"
+            JourneyStatus.BOARDING_DELAYED -> "$flightNumber • $depTime • Boarding Delayed"
+            JourneyStatus.BOARDING         -> "$flightNumber • $depTime • Boarding"
+            JourneyStatus.LAST_CALL        -> "$flightNumber • $depTime • Last Call"
+            JourneyStatus.TAKING_OFF       -> "$flightNumber • $depTime • Taking Off"
+            JourneyStatus.ON_THE_WAY       -> "$flightNumber • $arrTime • On The Way"
+            JourneyStatus.ARRIVAL          -> "$flightNumber • $arrTime • Arrival"
+            JourneyStatus.CONNECTION_ERROR -> "Connection Error"
+            JourneyStatus.GENERAL_ERROR    -> "Error"
+        }
     }
 }

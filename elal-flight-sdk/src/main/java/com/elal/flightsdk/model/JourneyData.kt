@@ -28,7 +28,7 @@ data class JourneyContentState(
     val gate: String? = null,
     val terminal: String? = null,
     val seat: String? = null,
-    val boardingGroup: String? = null,
+    val boardingZone: String? = null,
 
     // Check-In
     val checkInDesk: String? = null,

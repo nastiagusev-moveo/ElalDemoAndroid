@@ -30,7 +30,7 @@ object SampleFlightData {
 
             val checkIn = JourneyContentState(
                 status = JourneyStatus.CHECK_IN,
-                checkInDesk = "A108",
+                checkInDesk = "D78-99",
                 checkInStartTime = now.plus(2, ChronoUnit.HOURS)
             )
 
@@ -39,7 +39,7 @@ object SampleFlightData {
                 gate = "D3",
                 terminal = "3",
                 seat = "12A",
-                boardingGroup = "1",
+                boardingZone = "Zone 1",
                 boardingTime = now.plus(45, ChronoUnit.MINUTES),
                 gateClosingTime = now.plus(1, ChronoUnit.HOURS)
             )
@@ -50,7 +50,7 @@ object SampleFlightData {
                 gate = "D3",
                 terminal = "3",
                 seat = "12A",
-                boardingGroup = "1",
+                boardingZone = "Zone 1",
                 boardingTime = now.plus(70, ChronoUnit.MINUTES),
                 gateClosingTime = now.plus(85, ChronoUnit.MINUTES)
             )
@@ -60,7 +60,7 @@ object SampleFlightData {
                 gate = "D3",
                 terminal = "3",
                 seat = "12A",
-                boardingGroup = "1",
+                boardingZone = "Zone 1",
                 boardingTime = now,
                 gateClosingTime = now.plus(20, ChronoUnit.MINUTES)
             )
@@ -70,7 +70,7 @@ object SampleFlightData {
                 gate = "D3",
                 terminal = "3",
                 seat = "12A",
-                boardingGroup = "1",
+                boardingZone = "Zone 1",
                 gateClosingTime = now.plus(5, ChronoUnit.MINUTES)
             )
 

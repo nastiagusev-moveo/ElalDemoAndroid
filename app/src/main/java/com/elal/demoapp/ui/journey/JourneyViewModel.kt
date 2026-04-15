@@ -3,6 +3,7 @@ package com.elal.demoapp.ui.journey
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.elal.demoapp.debug.DebugNextStageReceiver // TODO: DEBUG - Remove before release
 import com.elal.flightsdk.manager.LiveUpdateManager
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
@@ -39,6 +40,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             val attributes = SampleFlightData.journeyAttributes
             val sequence = SampleFlightData.journeySimulationSequence
             val state = sequence[0]
+            DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
             LiveUpdateManager.startJourney(getApplication(), attributes, state)
             _isActivityActive.value = true
             currentStateIndex = 0
@@ -56,6 +58,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         val state = sequence[currentStateIndex]
 
         try {
+            DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
             LiveUpdateManager.updateJourney(getApplication(), state)
             updateUI(state)
             _errorMessage.value = null
@@ -66,6 +69,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     fun endActivity() {
         try {
+            DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
             LiveUpdateManager.endJourney(getApplication())
             _isActivityActive.value = false
             _isSimulating.value = false
@@ -152,7 +156,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             JourneyStatus.BOARDING_DELAYED ->
                 "Gate ${state.gate ?: "--"} · Boarding delayed"
             JourneyStatus.BOARDING ->
-                "Gate ${state.gate ?: "--"} · Seat ${state.seat ?: "--"} · Group ${state.boardingGroup ?: "--"}"
+                "Gate ${state.gate ?: "--"} · Seat ${state.seat ?: "--"} · Group ${state.boardingZone ?: "--"}"
             JourneyStatus.LAST_CALL ->
                 "Gate ${state.gate ?: "--"} · Gate closing soon"
             JourneyStatus.TAKING_OFF ->
