@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.ProgressStyle
+import androidx.core.graphics.drawable.IconCompat
 import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
@@ -75,7 +76,7 @@ object LiveUpdateManager {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(buildStatusBarText(attributes, state))
             .setContentText(buildContentText(state))
-            .setStyle(buildProgressStyle(attributes, state))
+            .setStyle(buildProgressStyle(context, attributes, state))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
@@ -90,50 +91,65 @@ object LiveUpdateManager {
     }
 
     /**
-     * 4 segments, no points.
+     * 3 segments:
+     *  seg0 (short) + seg1 (short) + seg2 (long — flight path, airplane moves along it)
      *
-     * Step 1 – CHECK_IN:                              nothing green
-     * Step 2 – BOARDING_SOON / BOARDING / LAST_CALL:  seg0 green
-     * Step 3 – TAKING_OFF:                            seg0 + seg1 green
-     * Step 4 – ON_THE_WAY:                            seg0 + seg1 + seg2 green
-     * Step 5 – ARRIVAL:                               all 4 segments green
+     * Step 1 – CHECK_IN:                              all grey,          no tracker
+     * Step 2 – BOARDING_SOON / BOARDING / LAST_CALL:  seg0 blue,         no tracker
+     * Step 3 – TAKING_OFF:                            seg0+seg1 blue,    airplane at start of seg2
+     * Step 4 – ON_THE_WAY:                            seg0+seg1 blue,    airplane moves along seg2
+     * Step 5 – ARRIVAL:                               all blue,          airplane at end of seg2
      */
     private fun buildProgressStyle(
+        context: Context,
         attributes: JourneyAttributes,
         state: JourneyContentState
     ): ProgressStyle {
-        val numSegments = 4
-        val segLen = PROGRESS_MAX / numSegments
+        val shortSegLen  = PROGRESS_MAX / 4      // 250
+        val longSegLen   = PROGRESS_MAX / 2      // 500
+        val flightStart  = shortSegLen * 2       // 500 — start of the long segment
+        val trackerInsetSpacing = longSegLen / 15       //  25 — nudge tracker into seg2 past the gap
 
         val progressIndex = when (state.status) {
-            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> -1
-            JourneyStatus.CHECK_IN -> 0
+            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> -1
+            JourneyStatus.CHECK_IN                                       ->  0
             JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED,
-            JourneyStatus.BOARDING, JourneyStatus.LAST_CALL -> 1
-            JourneyStatus.TAKING_OFF -> 2
-            JourneyStatus.ON_THE_WAY -> 3
-            JourneyStatus.ARRIVAL -> 4
+            JourneyStatus.BOARDING, JourneyStatus.LAST_CALL              ->  1
+            JourneyStatus.TAKING_OFF                                     ->  2
+            JourneyStatus.ON_THE_WAY                                     ->  3
+            JourneyStatus.ARRIVAL                                        ->  4
         }
 
-        val seg0 = ProgressStyle.Segment(segLen).setColor(if (progressIndex >= 1) ProgressBarBlue else ProgressBarGrey)
-        val seg1 = ProgressStyle.Segment(segLen).setColor(if (progressIndex >= 2) ProgressBarBlue else ProgressBarGrey)
-        val seg2 = ProgressStyle.Segment(segLen).setColor(if (progressIndex >= 3) ProgressBarBlue else ProgressBarGrey)
-        val seg3 = ProgressStyle.Segment(segLen).setColor(if (progressIndex >= 4) ProgressBarBlue else ProgressBarGrey)
+        val seg0 = ProgressStyle.Segment(shortSegLen).setColor(if (progressIndex >= 1) ProgressBarBlue else ProgressBarGrey)
+        val seg1 = ProgressStyle.Segment(shortSegLen).setColor(if (progressIndex >= 2) ProgressBarBlue else ProgressBarGrey)
+        val seg2 = ProgressStyle.Segment(longSegLen) .setColor(if (progressIndex >= 4) ProgressBarBlue else ProgressBarGrey)
 
         val progress = when (state.status) {
-            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR -> 0
-            JourneyStatus.CHECK_IN -> 0
+            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> 0
+            JourneyStatus.CHECK_IN                                       -> 0
             JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED,
-            JourneyStatus.BOARDING, JourneyStatus.LAST_CALL -> segLen
-            JourneyStatus.TAKING_OFF -> segLen * 2
-            JourneyStatus.ON_THE_WAY -> segLen * 3 + (computeFlightProgress(attributes, state) * segLen).toInt()
-            JourneyStatus.ARRIVAL -> PROGRESS_MAX
+            JourneyStatus.BOARDING, JourneyStatus.LAST_CALL              -> shortSegLen
+            JourneyStatus.TAKING_OFF                                     -> flightStart + trackerInsetSpacing
+            JourneyStatus.ON_THE_WAY                                     -> flightStart + trackerInsetSpacing + ((computeFlightProgress(attributes, state) * (longSegLen - trackerInsetSpacing)).toInt())
+            JourneyStatus.ARRIVAL                                        -> PROGRESS_MAX
         }
 
-        return ProgressStyle()
-            .setProgressSegments(listOf(seg0, seg1, seg2, seg3))
+        val style = ProgressStyle()
+            .setProgressSegments(listOf(seg0, seg1, seg2))
             .setProgress(progress)
             .setStyledByProgress(false)
+
+        val trackerIcon = when (state.status) {
+            JourneyStatus.TAKING_OFF  -> R.drawable.ic_airplane_move
+            JourneyStatus.ON_THE_WAY  -> R.drawable.ic_airplane_move
+            JourneyStatus.ARRIVAL     -> R.drawable.ic_airplane_move
+            else                      -> null
+        }
+        trackerIcon?.let {
+            style.setProgressTrackerIcon(IconCompat.createWithResource(context, it))
+        }
+
+        return style
     }
 
     private fun computeFlightProgress(attributes: JourneyAttributes, state: JourneyContentState): Double {
