@@ -13,7 +13,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 class JourneyViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -34,6 +36,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     private var currentStateIndex = 0
     private var simulationJob: Job? = null
+    private var arrivalWatchJob: Job? = null
 
     fun startActivity() {
         try {
@@ -61,6 +64,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
             LiveUpdateManager.updateJourney(getApplication(), state)
             updateUI(state)
+            manageArrivalWatch(state)
             _errorMessage.value = null
         } catch (e: Exception) {
             _errorMessage.value = "Failed to update: ${e.message}"
@@ -70,6 +74,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     fun endActivity() {
         try {
             DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
+            stopArrivalWatch()
             LiveUpdateManager.endJourney(getApplication())
             _isActivityActive.value = false
             _isSimulating.value = false
@@ -102,6 +107,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 try {
                     LiveUpdateManager.updateJourney(getApplication(), state)
                     updateUI(state)
+                    manageArrivalWatch(state)
                 } catch (e: Exception) {
                     _errorMessage.value = "Simulation error: ${e.message}"
                 }
@@ -146,6 +152,37 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Auto-advances to the next state (ARRIVAL) once the estimated arrival time is reached.
+     * Live progress animation is handled internally by [LiveUpdateManager].
+     */
+    private fun manageArrivalWatch(state: JourneyContentState) {
+        if (state.status == JourneyStatus.ON_THE_WAY) {
+            startArrivalWatch(state)
+        } else {
+            stopArrivalWatch()
+        }
+    }
+
+    private fun startArrivalWatch(state: JourneyContentState) {
+        stopArrivalWatch()
+        val eta = state.estimatedArrivalTime ?: return
+        arrivalWatchJob = viewModelScope.launch {
+            while (isActive) {
+                delay(ARRIVAL_CHECK_INTERVAL_MS)
+                if (Instant.now() >= eta) {
+                    updateToNextState()
+                    break
+                }
+            }
+        }
+    }
+
+    private fun stopArrivalWatch() {
+        arrivalWatchJob?.cancel()
+        arrivalWatchJob = null
+    }
+
     private fun updateUI(state: JourneyContentState) {
         _statusText.value = state.status.displayName
         _detailText.value = when (state.status) {
@@ -170,5 +207,9 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             JourneyStatus.GENERAL_ERROR ->
                 "Something went wrong"
         }
+    }
+
+    companion object {
+        private const val ARRIVAL_CHECK_INTERVAL_MS = 2_000L
     }
 }

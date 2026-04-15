@@ -19,8 +19,8 @@ object SampleFlightData {
                 departureCity = "Tel Aviv",
                 arrivalAirportCode = "JFK",
                 arrivalCity = "New York",
-                scheduledDepartureTime = now.plus(2, ChronoUnit.HOURS),
-                scheduledArrivalTime = now.plus(13, ChronoUnit.HOURS)
+                scheduledDepartureTime = now.minus(1, ChronoUnit.MINUTES),
+                scheduledArrivalTime = now.plus(4, ChronoUnit.MINUTES)
             )
         }
 
@@ -81,7 +81,7 @@ object SampleFlightData {
 
             val onTheWay = JourneyContentState(
                 status = JourneyStatus.ON_THE_WAY,
-                estimatedArrivalTime = now.plus(11, ChronoUnit.HOURS)
+                estimatedArrivalTime = now.plus(4, ChronoUnit.MINUTES)
             )
 
             val arrival = JourneyContentState(
