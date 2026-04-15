@@ -22,7 +22,7 @@ object LiveUpdateManager {
 
     private const val NOTIFICATION_ID = 7001
     private const val CHANNEL_ID = "elal_journey"
-    private const val PROGRESS_MAX = 1000
+    private const val PROGRESS_MAX = 265
 
     private const val ProgressBarBlue = 0xFF1B358F.toInt()
     private const val ProgressBarGrey = 0xFF8E93A5.toInt()
@@ -105,10 +105,10 @@ object LiveUpdateManager {
         attributes: JourneyAttributes,
         state: JourneyContentState
     ): ProgressStyle {
-        val shortSegLen  = PROGRESS_MAX / 4      // 250
-        val longSegLen   = PROGRESS_MAX / 2      // 500
-        val flightStart  = shortSegLen * 2       // 500 — start of the long segment
-        val trackerInsetSpacing = longSegLen / 15       //  25 — nudge tracker into seg2 past the gap
+        val shortSegLen  = PROGRESS_MAX / 6   // 250
+        val longSegLen   = PROGRESS_MAX / 2   // 500
+        val flightStart  = shortSegLen * 2    // 500 — where the flight path begins
+        val trackerInsetSpacing = longSegLen / 20    //  ~33 — nudge tracker past the segment gap
 
         val progressIndex = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> -1
