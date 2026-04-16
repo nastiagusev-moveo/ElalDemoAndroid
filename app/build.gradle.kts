@@ -19,6 +19,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // TODO: Replace with a proper release keystore before Play Store distribution.
+            // Using the debug keystore so Studio can install release APKs on-device during development.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

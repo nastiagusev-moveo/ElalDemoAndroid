@@ -1,6 +1,7 @@
 package com.elal.demoapp.ui.journey
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.elal.demoapp.debug.DebugNextStageReceiver // TODO: DEBUG - Remove before release
@@ -38,12 +39,17 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private var simulationJob: Job? = null
     private var arrivalWatchJob: Job? = null
 
+    // TODO: DEBUG - Remove before release (along with all DebugNextStageReceiver usages)
+    private val isDebuggable: Boolean
+        get() = (getApplication<Application>().applicationInfo.flags and
+                ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
     fun startActivity() {
         try {
             val attributes = SampleFlightData.journeyAttributes
             val sequence = SampleFlightData.journeySimulationSequence
             val state = sequence[0]
-            DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
+            if (isDebuggable) DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
             LiveUpdateManager.startJourney(getApplication(), attributes, state)
             _isActivityActive.value = true
             currentStateIndex = 0
@@ -61,7 +67,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         val state = sequence[currentStateIndex]
 
         try {
-            DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
+            if (isDebuggable) DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
             LiveUpdateManager.updateJourney(getApplication(), state)
             updateUI(state)
             manageArrivalWatch(state)
@@ -73,7 +79,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     fun endActivity() {
         try {
-            DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
+            if (isDebuggable) DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
             stopArrivalWatch()
             LiveUpdateManager.endJourney(getApplication())
             _isActivityActive.value = false
