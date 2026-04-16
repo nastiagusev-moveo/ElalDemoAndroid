@@ -14,6 +14,7 @@ import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
+import java.time.temporal.ChronoUnit
 
 /**
  * Manages the lifecycle of Live Update notifications.
@@ -35,7 +36,10 @@ object LiveUpdateManager {
     val isActive: Boolean get() = currentAttributes != null
 
     // Recorded the moment we first enter ON_THE_WAY so progress always starts from 0.
+    // Both are latched once on the first ON_THE_WAY entry and never replaced mid-flight,
+    // so repeated updateJourney calls can't shift the ETA and cause jumps.
     private var onTheWayStartTime: java.time.Instant? = null
+    private var onTheWayEta: java.time.Instant? = null
     private var appContext: Context? = null
 
     // Self-update timer: re-posts the notification periodically so the airplane icon moves live.
@@ -75,17 +79,22 @@ object LiveUpdateManager {
         ensureChannel(context)
         currentAttributes = attributes
         onTheWayStartTime = null
+        onTheWayEta = null
         postNotification(context, attributes, initialState)
     }
 
     fun updateJourney(context: Context, state: JourneyContentState) {
         val attrs = currentAttributes ?: throw LiveUpdateError.NoActiveActivity()
-        // Latch start time the first time we enter ON_THE_WAY; clear for any other status.
+        // Latch start time and ETA the first time we enter ON_THE_WAY; clear for any other status.
         if (state.status == JourneyStatus.ON_THE_WAY) {
-            if (onTheWayStartTime == null) onTheWayStartTime = java.time.Instant.now()
+            if (onTheWayStartTime == null) {
+                onTheWayStartTime = java.time.Instant.now()
+                onTheWayEta = state.estimatedArrivalTime
+            }
             startSelfUpdate(state)
         } else {
             onTheWayStartTime = null
+            onTheWayEta = null
             stopSelfUpdate()
         }
         postNotification(context, attrs, state)
@@ -96,6 +105,7 @@ object LiveUpdateManager {
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         currentAttributes = null
         onTheWayStartTime = null
+        onTheWayEta = null
         appContext = null
     }
 
@@ -136,14 +146,20 @@ object LiveUpdateManager {
     }
 
     /**
-     * Segment layout:
-     *  seg0 (short) + seg1 (short) + [seg2_filled (blue, grows) + seg2_remaining (grey, shrinks)]
+     * Segment layout — always exactly 3 segments, never changes:
+     *  seg0 (short) + seg1 (short) + seg2 (long / flight path)
      *
-     * Step 1 – CHECK_IN:                   all grey,         no tracker
-     * Step 2 – BOARDING_SOON … LAST_CALL:  seg0 blue,        no tracker
-     * Step 3 – TAKING_OFF:                 seg0+seg1 blue,   airplane at start of flight path
-     * Step 4 – ON_THE_WAY:                 seg0+seg1 blue,   airplane moves + blue trail grows
-     * Step 5 – ARRIVAL:                    all blue,         landing icon at end
+     * All segments are set to blue; styledByProgress(true) lets the framework
+     * color everything before the progress point in the segment's color (blue)
+     * and everything after in its default unfilled style (grey).
+     * This avoids splitting the flight segment into sub-segments, which would
+     * introduce visible inter-segment gaps and cause layout jumps.
+     *
+     * Step 1 – CHECK_IN:                   progress=0        → all grey,     no tracker
+     * Step 2 – BOARDING_SOON … LAST_CALL:  progress=seg0     → seg0 blue,   no tracker
+     * Step 3 – TAKING_OFF:                 progress=seg0+1   → seg0+1 blue, airplane at start
+     * Step 4 – ON_THE_WAY:                 progress grows    → blue trail,  airplane moves
+     * Step 5 – ARRIVAL:                    progress=max      → all blue,    landing icon
      */
     private fun buildProgressStyle(
         context: Context,
@@ -152,7 +168,7 @@ object LiveUpdateManager {
         val shortSegLen  = PROGRESS_MAX / 6   // 40
         val longSegLen   = PROGRESS_MAX / 2   // 120
         val flightStart  = shortSegLen * 2    // 80 — where the flight path begins
-        val trackerInsetSpacing = longSegLen / 60  // extra blue behind the airplane to cover the inter-segment gap
+        val totalSegLen  = shortSegLen * 2 + longSegLen  // 200
 
         val progressIndex = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> -1
@@ -164,52 +180,28 @@ object LiveUpdateManager {
             JourneyStatus.ARRIVAL                                        ->  4
         }
 
-        val seg0 = ProgressStyle.Segment(shortSegLen).setColor(if (progressIndex >= 1) ProgressBarBlue else ProgressBarGrey)
-        val seg1 = ProgressStyle.Segment(shortSegLen).setColor(if (progressIndex >= 2) ProgressBarBlue else ProgressBarGrey)
+        val segments = listOf(
+            ProgressStyle.Segment(shortSegLen).setColor(ProgressBarBlue),
+            ProgressStyle.Segment(shortSegLen).setColor(ProgressBarBlue),
+            ProgressStyle.Segment(longSegLen).setColor(ProgressBarBlue)
+        )
 
-        val segments: List<ProgressStyle.Segment>
-        val progress: Int
-
-        if (state.status == JourneyStatus.ON_THE_WAY) {
-            val flightProgress = computeFlightProgress(state)
-            Log.d("buildProgressStyle", "flightProgress $flightProgress")
-            val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen)
-            // Extend the blue segment past the airplane icon to cover the inter-segment gap
-            val segFilled = (filled + trackerInsetSpacing).coerceAtMost(longSegLen)
-            val segRemaining = longSegLen - segFilled
-            if (filled > 0 && segRemaining > 0) {
-                // Split the flight segment into blue (done) + grey (remaining)
-                segments = listOf(seg0, seg1,
-                    ProgressStyle.Segment(segFilled).setColor(ProgressBarBlue),
-                    ProgressStyle.Segment(segRemaining).setColor(ProgressBarGrey))
-            } else if (filled >= longSegLen || segRemaining <= 0) {
-                // Flight complete — all blue
-                segments = listOf(seg0, seg1, ProgressStyle.Segment(longSegLen).setColor(ProgressBarBlue))
-            } else {
-                // Just started — keep 3 segments, same layout as TAKING_OFF
-                segments = listOf(seg0, seg1, ProgressStyle.Segment(longSegLen).setColor(ProgressBarGrey))
+        val progress: Int = when {
+            state.status == JourneyStatus.ON_THE_WAY -> {
+                val flightProgress = computeFlightProgress(state)
+                val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen)
+                flightStart + filled
             }
-            progress = flightStart + filled
-            Log.d("buildProgressStyle", "Final flightProgress $flightProgress")
-        } else {
-            val seg2Color = if (progressIndex >= 4) ProgressBarBlue else ProgressBarGrey
-            segments = listOf(seg0, seg1, ProgressStyle.Segment(longSegLen).setColor(seg2Color))
-            progress = when (state.status) {
-                JourneyStatus.CONNECTION_ERROR,
-                JourneyStatus.GENERAL_ERROR,
-                JourneyStatus.CHECK_IN                                       -> 0
-                JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED,
-                JourneyStatus.BOARDING, JourneyStatus.LAST_CALL              -> shortSegLen
-                JourneyStatus.TAKING_OFF                                     -> flightStart
-                JourneyStatus.ARRIVAL                                        -> PROGRESS_MAX
-                else                                                         -> 0
-            }
+            progressIndex >= 4 -> totalSegLen             // ARRIVAL — end of bar
+            progressIndex >= 2 -> flightStart             // TAKING_OFF — start of flight path
+            progressIndex >= 1 -> shortSegLen             // BOARDING states — end of seg0
+            else               -> 0                       // CHECK_IN / errors
         }
 
         val style = ProgressStyle()
             .setProgressSegments(segments)
             .setProgress(progress)
-            .setStyledByProgress(false)
+            .setStyledByProgress(true)
 
         val trackerIcon = when (state.status) {
             JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_taking_off_left_2
@@ -224,14 +216,16 @@ object LiveUpdateManager {
 
     /**
      * Returns 0.0 → 1.0 based on time elapsed since ON_THE_WAY was entered
-     * vs the total duration until estimatedArrivalTime.
-     * Always starts at 0.0 the moment we enter ON_THE_WAY regardless of departure time.
+     * vs the total duration until estimatedArrivalTime (truncated to the minute boundary).
+     * Uses the latched [onTheWayEta] so repeated updateJourney calls with a fresh state
+     * can never shift the ETA and cause the airplane to jump or freeze.
      */
     private fun computeFlightProgress(state: JourneyContentState): Double {
-        val eta       = state.estimatedArrivalTime ?: return 0.0
-        val startTime = onTheWayStartTime          ?: return 0.0
-        val total     = eta.epochSecond - startTime.epochSecond
-        if (total <= 0) return 0.0
+        val eta       = onTheWayEta       ?: return 0.0
+        val startTime = onTheWayStartTime ?: return 0.0
+        val etaTruncated = eta.truncatedTo(ChronoUnit.MINUTES)
+        val total = etaTruncated.epochSecond - startTime.epochSecond
+        if (total <= 0) return 1.0
         val elapsed = java.time.Instant.now().epochSecond - startTime.epochSecond
         return (elapsed.toDouble() / total).coerceIn(0.0, 1.0)
     }
