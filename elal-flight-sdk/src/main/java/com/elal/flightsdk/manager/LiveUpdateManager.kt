@@ -152,7 +152,7 @@ object LiveUpdateManager {
         val shortSegLen  = PROGRESS_MAX / 6   // 40
         val longSegLen   = PROGRESS_MAX / 2   // 120
         val flightStart  = shortSegLen * 2    // 80 — where the flight path begins
-//        val trackerInsetSpacing = longSegLen / 20
+        val trackerInsetSpacing = longSegLen / 60  // extra blue behind the airplane to cover the inter-segment gap
 
         val progressIndex = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> -1
@@ -174,13 +174,15 @@ object LiveUpdateManager {
             val flightProgress = computeFlightProgress(state)
             Log.d("buildProgressStyle", "flightProgress $flightProgress")
             val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen)
-            val remaining = longSegLen - filled
-            if (filled > 0 && remaining > 0) {
+            // Extend the blue segment past the airplane icon to cover the inter-segment gap
+            val segFilled = (filled + trackerInsetSpacing).coerceAtMost(longSegLen)
+            val segRemaining = longSegLen - segFilled
+            if (filled > 0 && segRemaining > 0) {
                 // Split the flight segment into blue (done) + grey (remaining)
                 segments = listOf(seg0, seg1,
-                    ProgressStyle.Segment(filled).setColor(ProgressBarBlue),
-                    ProgressStyle.Segment(remaining).setColor(ProgressBarGrey))
-            } else if (filled >= longSegLen) {
+                    ProgressStyle.Segment(segFilled).setColor(ProgressBarBlue),
+                    ProgressStyle.Segment(segRemaining).setColor(ProgressBarGrey))
+            } else if (filled >= longSegLen || segRemaining <= 0) {
                 // Flight complete — all blue
                 segments = listOf(seg0, seg1, ProgressStyle.Segment(longSegLen).setColor(ProgressBarBlue))
             } else {
