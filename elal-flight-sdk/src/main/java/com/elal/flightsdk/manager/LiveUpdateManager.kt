@@ -165,9 +165,9 @@ object LiveUpdateManager {
         context: Context,
         state: JourneyContentState
     ): ProgressStyle {
-        val shortSegLen  = PROGRESS_MAX / 6   // 40
-        val longSegLen   = PROGRESS_MAX / 2   // 120
-        val flightStart  = shortSegLen * 2    // 80 — where the flight path begins
+        val shortSegLen  = PROGRESS_MAX / 5               // 48
+        val flightStart  = shortSegLen * 2               // 96
+        val longSegLen   = PROGRESS_MAX - flightStart    // 144 — fills the rest so segments total PROGRESS_MAX (240)
         val totalSegLen  = shortSegLen * 2 + longSegLen  // 200
 
         val progressIndex = when (state.status) {
@@ -198,6 +198,7 @@ object LiveUpdateManager {
             else               -> 0                       // CHECK_IN / errors
         }
 
+        Log.d("SegDbg", "${state.status} [$shortSegLen,$shortSegLen,$longSegLen] total=$totalSegLen progress=$progress/$PROGRESS_MAX")
         val style = ProgressStyle()
             .setProgressSegments(segments)
             .setProgress(progress)
