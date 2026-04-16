@@ -50,7 +50,11 @@ object LiveUpdateManager {
             val ctx = appContext ?: return
             val attrs = currentAttributes ?: return
             val state = selfUpdateState ?: return
-            postNotification(ctx, attrs, state)
+            postNotification(ctx, attrs, state, isSelfUpdate = true)
+            if (computeFlightProgress(state) >= 1.0) {
+                stopSelfUpdate()
+                return
+            }
             handler.postDelayed(this, SELF_UPDATE_INTERVAL_MS)
         }
     }
@@ -123,7 +127,8 @@ object LiveUpdateManager {
     private fun postNotification(
         context: Context,
         attributes: JourneyAttributes,
-        state: JourneyContentState
+        state: JourneyContentState,
+        isSelfUpdate: Boolean = false
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
 
@@ -135,6 +140,12 @@ object LiveUpdateManager {
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
+            // Silence: for Errors and when airplane moves (ON_THE_WAY stage)
+            .setOnlyAlertOnce(
+                isSelfUpdate ||
+                state.status == JourneyStatus.CONNECTION_ERROR ||
+                state.status == JourneyStatus.GENERAL_ERROR
+            )
             //.build() // TODO: DEBUG - revert
 
         // TODO: DEBUG - Remove before release
