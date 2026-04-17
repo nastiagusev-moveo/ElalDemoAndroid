@@ -29,6 +29,9 @@ object LiveUpdateManager {
     private const val PROGRESS_MAX = 240
     private const val SELF_UPDATE_INTERVAL_MS = 1_000L
 
+    // Android's ProgressStyle gap bug Fixed
+    private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
+
     private const val ProgressBarBlue = 0xFF1B358F.toInt()
     private const val ProgressBarGrey = 0xFF8E93A5.toInt()
 
@@ -89,7 +92,6 @@ object LiveUpdateManager {
 
     fun updateJourney(context: Context, state: JourneyContentState) {
         val attrs = currentAttributes ?: throw LiveUpdateError.NoActiveActivity()
-        // Latch start time and ETA the first time we enter ON_THE_WAY; clear for any other status.
         if (state.status == JourneyStatus.ON_THE_WAY) {
             if (onTheWayStartTime == null) {
                 onTheWayStartTime = java.time.Instant.now()
@@ -176,10 +178,11 @@ object LiveUpdateManager {
         context: Context,
         state: JourneyContentState
     ): ProgressStyle {
-        val shortSegLen  = PROGRESS_MAX / 5               // 48
-        val flightStart  = shortSegLen * 2               // 96
-        val longSegLen   = PROGRESS_MAX - flightStart    // 144 — fills the rest so segments total PROGRESS_MAX (240)
-        val totalSegLen  = shortSegLen * 2 + longSegLen  // 200
+        val shortSegLen  = PROGRESS_MAX / 5                      // 48
+        val seg0Len      = shortSegLen - SEG0_COMPENSATION       // 38
+        val seg1Len      = shortSegLen                           // 48
+        val flightStart  = seg0Len + seg1Len                     // 86
+        val longSegLen   = PROGRESS_MAX - flightStart            // 154
 
         val progressIndex = when (state.status) {
             JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> -1
@@ -192,24 +195,23 @@ object LiveUpdateManager {
         }
 
         val segments = listOf(
-            ProgressStyle.Segment(shortSegLen).setColor(ProgressBarBlue),
-            ProgressStyle.Segment(shortSegLen).setColor(ProgressBarBlue),
+            ProgressStyle.Segment(seg0Len).setColor(ProgressBarBlue),
+            ProgressStyle.Segment(seg1Len).setColor(ProgressBarBlue),
             ProgressStyle.Segment(longSegLen).setColor(ProgressBarBlue)
         )
 
         val progress: Int = when {
             state.status == JourneyStatus.ON_THE_WAY -> {
                 val flightProgress = computeFlightProgress(state)
-                val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen)
-                flightStart + filled
+                val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen - 1)
+                flightStart + 1 + filled
             }
-            progressIndex >= 4 -> totalSegLen             // ARRIVAL — end of bar
-            progressIndex >= 2 -> flightStart             // TAKING_OFF — start of flight path
-            progressIndex >= 1 -> shortSegLen             // BOARDING states — end of seg0
-            else               -> 0                       // CHECK_IN / errors
+            progressIndex >= 4 -> PROGRESS_MAX      // ARRIVAL — end of bar
+            progressIndex >= 2 -> flightStart       // TAKING_OFF — start of flight path
+            progressIndex >= 1 -> seg0Len           // BOARDING states — end of seg0
+            else               -> 0                 // CHECK_IN / errors
         }
 
-        Log.d("SegDbg", "${state.status} [$shortSegLen,$shortSegLen,$longSegLen] total=$totalSegLen progress=$progress/$PROGRESS_MAX")
         val style = ProgressStyle()
             .setProgressSegments(segments)
             .setProgress(progress)
@@ -218,10 +220,10 @@ object LiveUpdateManager {
         val trackerIcon = when (state.status) {
             JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_taking_off_left_2
             JourneyStatus.ON_THE_WAY -> R.drawable.ic_airplane_move_left_2
-            JourneyStatus.ARRIVAL -> R.drawable.ic_airplane_land_left_2
-            else                  -> null
+            JourneyStatus.ARRIVAL    -> R.drawable.ic_airplane_land_left_2
+            else                     -> R.drawable.ic_airplane_placeholder_transparent // to avoid Android re-measures and layout jumps
         }
-        trackerIcon?.let { style.setProgressTrackerIcon(IconCompat.createWithResource(context, it)) }
+        style.setProgressTrackerIcon(IconCompat.createWithResource(context, trackerIcon))
 
         return style
     }
