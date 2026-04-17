@@ -1,0 +1,15 @@
+<!--
+  Invisible 39x25 placeholder matching the airplane icons' exact dimensions.
+  Used as the ProgressStyle tracker icon on pre-flight stages (CHECK_IN, BOARDING*, LAST_CALL)
+  so the tracker icon slot is NEVER toggled on/off — which causes Android to re-measure
+  the progress segments and shift their widths on the TAKING_OFF → ON_THE_WAY transition.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="39dp"
+    android:height="25dp"
+    android:viewportWidth="39"
+    android:viewportHeight="25">
+    <path
+        android:pathData="M0,0L39,0L39,25L0,25Z"
+        android:fillColor="#00000000"/>
+</vector>
