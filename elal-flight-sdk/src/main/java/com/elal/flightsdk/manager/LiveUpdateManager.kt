@@ -136,14 +136,33 @@ object LiveUpdateManager {
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(chipIconFor(state.status))
             .setContentTitle(buildStatusBarText(attributes, state))
             .setContentText(buildContentText(state))
             .setStyle(buildProgressStyle(context, state))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
+
+        // Status-bar chip label: setShortCriticalText for static text,
+        // setWhen + chronometer countdown for ON_THE_WAY's live "H:MM" remaining.
+        if (state.status == JourneyStatus.ON_THE_WAY) {
+            val eta = onTheWayEta ?: state.estimatedArrivalTime
+            if (eta != null) {
+                builder.setWhen(eta.toEpochMilli())
+                    .setShowWhen(true)
+                    .setUsesChronometer(true)
+                    .setChronometerCountDown(true)
+            } else {
+                builder.setShortCriticalText(buildChipText(state))
+            }
+        } else {
+            builder.setShortCriticalText(buildChipText(state))
+                .setShowWhen(false)
+        }
+
+        val notification = builder
             // Silence: for Errors and when airplane moves (ON_THE_WAY stage)
             .setOnlyAlertOnce(
                 isSelfUpdate ||
@@ -273,7 +292,41 @@ object LiveUpdateManager {
         return "%d:%02d".format(local.hour, local.minute)
     }
 
-    private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String {
+    /**
+     * Icon shown in the status-bar chip (Android 16 Live Update promoted chip)
+     * and as the small icon in the notification header.
+     */
+    private fun chipIconFor(status: JourneyStatus): Int = when (status) {
+        JourneyStatus.CHECK_IN         -> R.drawable.ic_chip_checkin
+        JourneyStatus.BOARDING_SOON,
+        JourneyStatus.BOARDING_DELAYED,
+        JourneyStatus.BOARDING,
+        JourneyStatus.LAST_CALL        -> R.drawable.ic_chip_boarding
+        JourneyStatus.TAKING_OFF       -> R.drawable.ic_chip_takeoff
+        JourneyStatus.ON_THE_WAY       -> R.drawable.ic_chip_ontheway
+        JourneyStatus.ARRIVAL          -> R.drawable.ic_chip_arrival
+        JourneyStatus.CONNECTION_ERROR,
+        JourneyStatus.GENERAL_ERROR    -> R.drawable.ic_chip_error
+    }
+
+    /**
+     * Short text shown next to the chip icon in the status bar.
+     * Keep it tight — the chip has very limited width.
+     */
+    private fun buildChipText(state: JourneyContentState): String = when (state.status) {
+        JourneyStatus.CHECK_IN         -> state.checkInDesk ?: "Check-in"
+        JourneyStatus.BOARDING_SOON,
+        JourneyStatus.BOARDING_DELAYED,
+        JourneyStatus.BOARDING,
+        JourneyStatus.LAST_CALL        -> state.gate ?: "Boarding"
+        JourneyStatus.TAKING_OFF       -> "Please take a seat"
+        JourneyStatus.ON_THE_WAY       -> "En route"
+        JourneyStatus.ARRIVAL          -> "Arrival"
+        JourneyStatus.CONNECTION_ERROR -> "Offline"
+        JourneyStatus.GENERAL_ERROR    -> "Error"
+    }
+
+private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String {
         val depTime = formatTime(attributes.scheduledDepartureTime)
         val arrTime = formatTime(
             state.estimatedArrivalTime ?: attributes.scheduledArrivalTime

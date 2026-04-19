@@ -81,7 +81,7 @@ object SampleFlightData {
 
             val onTheWay = JourneyContentState(
                 status = JourneyStatus.ON_THE_WAY,
-                estimatedArrivalTime = now.plus(1, ChronoUnit.MINUTES)
+                estimatedArrivalTime = now.plus(5, ChronoUnit.HOURS)
             )
 
             val arrival = JourneyContentState(
