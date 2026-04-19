@@ -5,7 +5,10 @@ import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.elal.demoapp.debug.DebugNextStageReceiver // TODO: DEBUG - Remove before release
+import com.elal.flightsdk.manager.LiveUpdateError
 import com.elal.flightsdk.manager.LiveUpdateManager
+import com.elal.flightsdk.manager.onFailure
+import com.elal.flightsdk.manager.onSuccess
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
 import com.elal.flightsdk.sample.SampleFlightData
@@ -45,53 +48,46 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     fun startActivity() {
-        try {
-            val attributes = SampleFlightData.journeyAttributes
-            val sequence = SampleFlightData.journeySimulationSequence
-            val state = sequence[0]
-            if (isDebuggable) DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
-            LiveUpdateManager.startJourney(getApplication(), attributes, state)
-            _isActivityActive.value = true
-            currentStateIndex = 0
-            _statusText.value = state.status.displayName
-            _detailText.value = "Flight LY 001 · TLV → JFK"
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "Failed to start: ${e.message}"
-        }
+        val attributes = SampleFlightData.journeyAttributes
+        val sequence = SampleFlightData.journeySimulationSequence
+        val state = sequence[0]
+        if (isDebuggable) DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
+        LiveUpdateManager.startJourney(getApplication(), attributes, state)
+            .onSuccess {
+                _isActivityActive.value = true
+                currentStateIndex = 0
+                _statusText.value = state.status.displayName
+                _detailText.value = "Flight LY 001 · TLV → JFK"
+                _errorMessage.value = null
+            }
+            .onFailure { _errorMessage.value = it.toDisplayMessage() }
     }
 
     fun updateToNextState() {
         val sequence = SampleFlightData.journeySimulationSequence
         currentStateIndex = (currentStateIndex + 1).coerceAtMost(sequence.size - 1)
         val state = sequence[currentStateIndex]
-
-        try {
-            if (isDebuggable) DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
-            LiveUpdateManager.updateJourney(getApplication(), state)
-            updateUI(state)
-            manageArrivalWatch(state)
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "Failed to update: ${e.message}"
-        }
+        if (isDebuggable) DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
+        LiveUpdateManager.updateJourney(getApplication(), state)
+            .onSuccess {
+                updateUI(state)
+                manageArrivalWatch(state)
+                _errorMessage.value = null
+            }
+            .onFailure { _errorMessage.value = it.toDisplayMessage() }
     }
 
     fun endActivity() {
-        try {
-            if (isDebuggable) DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
-            stopArrivalWatch()
-            LiveUpdateManager.endJourney(getApplication())
-            _isActivityActive.value = false
-            _isSimulating.value = false
-            simulationJob?.cancel()
-            simulationJob = null
-            _statusText.value = "No Active Activity"
-            _detailText.value = null
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "Failed to end: ${e.message}"
-        }
+        if (isDebuggable) DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
+        stopArrivalWatch()
+        LiveUpdateManager.endJourney(getApplication())
+        _isActivityActive.value = false
+        _isSimulating.value = false
+        simulationJob?.cancel()
+        simulationJob = null
+        _statusText.value = "No Active Activity"
+        _detailText.value = null
+        _errorMessage.value = null
     }
 
     fun simulateJourney() {
@@ -110,15 +106,13 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 delay(5_000L)
                 currentStateIndex = i
                 val state = sequence[i]
-                try {
-                    LiveUpdateManager.updateJourney(getApplication(), state)
-                    updateUI(state)
-                    manageArrivalWatch(state)
-                } catch (e: Exception) {
-                    _errorMessage.value = "Simulation error: ${e.message}"
-                }
+                LiveUpdateManager.updateJourney(getApplication(), state)
+                    .onSuccess {
+                        updateUI(state)
+                        manageArrivalWatch(state)
+                    }
+                    .onFailure { _errorMessage.value = it.toDisplayMessage() }
             }
-            // After final state, wait a moment then end
             delay(5_000L)
             endActivity()
         }
@@ -126,36 +120,49 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     fun setConnectionError() {
         val state = JourneyContentState(status = JourneyStatus.CONNECTION_ERROR)
-        try {
-            if (!_isActivityActive.value) {
-                val attributes = SampleFlightData.journeyAttributes
-                LiveUpdateManager.startJourney(getApplication(), attributes, state)
-                _isActivityActive.value = true
-            } else {
-                LiveUpdateManager.updateJourney(getApplication(), state)
-            }
-            updateUI(state)
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "Failed to set connection error: ${e.message}"
+        if (!_isActivityActive.value) {
+            LiveUpdateManager.startJourney(getApplication(), SampleFlightData.journeyAttributes, state)
+                .onSuccess {
+                    _isActivityActive.value = true
+                    updateUI(state)
+                    _errorMessage.value = null
+                }
+                .onFailure { _errorMessage.value = it.toDisplayMessage() }
+        } else {
+            LiveUpdateManager.updateJourney(getApplication(), state)
+                .onSuccess {
+                    updateUI(state)
+                    _errorMessage.value = null
+                }
+                .onFailure { _errorMessage.value = it.toDisplayMessage() }
         }
     }
 
     fun setGeneralError() {
         val state = JourneyContentState(status = JourneyStatus.GENERAL_ERROR)
-        try {
-            if (!_isActivityActive.value) {
-                val attributes = SampleFlightData.journeyAttributes
-                LiveUpdateManager.startJourney(getApplication(), attributes, state)
-                _isActivityActive.value = true
-            } else {
-                LiveUpdateManager.updateJourney(getApplication(), state)
-            }
-            updateUI(state)
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "Failed to set error: ${e.message}"
+        if (!_isActivityActive.value) {
+            LiveUpdateManager.startJourney(getApplication(), SampleFlightData.journeyAttributes, state)
+                .onSuccess {
+                    _isActivityActive.value = true
+                    updateUI(state)
+                    _errorMessage.value = null
+                }
+                .onFailure { _errorMessage.value = it.toDisplayMessage() }
+        } else {
+            LiveUpdateManager.updateJourney(getApplication(), state)
+                .onSuccess {
+                    updateUI(state)
+                    _errorMessage.value = null
+                }
+                .onFailure { _errorMessage.value = it.toDisplayMessage() }
         }
+    }
+
+    private fun LiveUpdateError.toDisplayMessage(): String = when (this) {
+        is LiveUpdateError.ActivityAlreadyRunning -> "A live update is already running"
+        is LiveUpdateError.NoActiveActivity -> "No active live update to modify"
+        is LiveUpdateError.NotificationsNotEnabled -> "Notifications are not enabled"
+        is LiveUpdateError.FailedToStart -> "Failed to start: ${cause.message}"
     }
 
     /**

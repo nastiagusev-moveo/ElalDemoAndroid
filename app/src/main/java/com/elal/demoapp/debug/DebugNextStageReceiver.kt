@@ -26,9 +26,7 @@ class DebugNextStageReceiver : BroadcastReceiver() {
         if (intent.action != ACTION) return
         val sequence = SampleFlightData.journeySimulationSequence
         currentIndex = (currentIndex + 1).coerceAtMost(sequence.size - 1)
-        try {
-            LiveUpdateManager.updateJourney(context.applicationContext, sequence[currentIndex])
-        } catch (_: Exception) { }
+        LiveUpdateManager.updateJourney(context.applicationContext, sequence[currentIndex])
     }
 
     companion object {

@@ -80,18 +80,19 @@ object LiveUpdateManager {
         }
     }
 
-    fun startJourney(context: Context, attributes: JourneyAttributes, initialState: JourneyContentState) {
-        if (isActive) throw LiveUpdateError.ActivityAlreadyRunning()
+    fun startJourney(context: Context, attributes: JourneyAttributes, initialState: JourneyContentState): EmptyResult<LiveUpdateError> {
+        if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
         appContext = context.applicationContext
         ensureChannel(context)
         currentAttributes = attributes
         onTheWayStartTime = null
         onTheWayEta = null
         postNotification(context, attributes, initialState)
+        return Result.Success(Unit)
     }
 
-    fun updateJourney(context: Context, state: JourneyContentState) {
-        val attrs = currentAttributes ?: throw LiveUpdateError.NoActiveActivity()
+    fun updateJourney(context: Context, state: JourneyContentState): EmptyResult<LiveUpdateError> {
+        val attrs = currentAttributes ?: return Result.Failure(LiveUpdateError.NoActiveActivity())
         if (state.status == JourneyStatus.ON_THE_WAY) {
             if (onTheWayStartTime == null) {
                 onTheWayStartTime = java.time.Instant.now()
@@ -104,6 +105,7 @@ object LiveUpdateManager {
             stopSelfUpdate()
         }
         postNotification(context, attrs, state)
+        return Result.Success(Unit)
     }
 
     fun endJourney(context: Context) {
