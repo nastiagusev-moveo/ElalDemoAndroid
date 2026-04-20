@@ -6,7 +6,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.ProgressStyle
 import androidx.core.graphics.drawable.IconCompat
@@ -14,6 +13,9 @@ import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
+import com.elal.flightsdk.utils.Logger
+import com.elal.flightsdk.utils.orDash
+import com.elal.flightsdk.utils.toFormattedTime
 import java.time.temporal.ChronoUnit
 
 /**
@@ -27,7 +29,7 @@ object LiveUpdateManager {
     private const val NOTIFICATION_ID = 7001
     private const val CHANNEL_ID = "elal_journey"
     private const val PROGRESS_MAX = 240
-    private const val SELF_UPDATE_INTERVAL_MS = 1_000L
+    private const val SELF_UPDATE_INTERVAL_MS = 5_000L
 
     // Android's ProgressStyle gap bug Fixed
     private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
@@ -35,12 +37,10 @@ object LiveUpdateManager {
     private const val ProgressBarBlue = 0xFF1B358F.toInt()
     private const val ProgressBarGrey = 0xFF8E93A5.toInt()
 
+    private val log = Logger("LiveUpdateManager")
+
     private var currentAttributes: JourneyAttributes? = null
     val isActive: Boolean get() = currentAttributes != null
-
-    // Recorded the moment we first enter ON_THE_WAY so progress always starts from 0.
-    // Both are latched once on the first ON_THE_WAY entry and never replaced mid-flight,
-    // so repeated updateJourney calls can't shift the ETA and cause jumps.
     private var onTheWayStartTime: java.time.Instant? = null
     private var onTheWayEta: java.time.Instant? = null
     private var appContext: Context? = null
@@ -82,6 +82,7 @@ object LiveUpdateManager {
 
     fun startJourney(context: Context, attributes: JourneyAttributes, initialState: JourneyContentState): EmptyResult<LiveUpdateError> {
         if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
+        log.i("startJourney: flight=${attributes.flightNumber} status=${initialState.status}")
         appContext = context.applicationContext
         ensureChannel(context)
         currentAttributes = attributes
@@ -93,6 +94,7 @@ object LiveUpdateManager {
 
     fun updateJourney(context: Context, state: JourneyContentState): EmptyResult<LiveUpdateError> {
         val attrs = currentAttributes ?: return Result.Failure(LiveUpdateError.NoActiveActivity())
+        log.d("updateJourney: status=${state.status}")
         if (state.status == JourneyStatus.ON_THE_WAY) {
             if (onTheWayStartTime == null) {
                 onTheWayStartTime = java.time.Instant.now()
@@ -109,6 +111,7 @@ object LiveUpdateManager {
     }
 
     fun endJourney(context: Context) {
+        log.i("endJourney")
         stopSelfUpdate()
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         currentAttributes = null
@@ -266,30 +269,16 @@ object LiveUpdateManager {
     }
 
     private fun buildContentText(state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk ?: "--"}"
-        JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate ?: "--"}"
-        JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate ?: "--"}"
-        JourneyStatus.BOARDING         -> "Your zone: ${state.boardingZone ?: "--"}"
-        JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate ?: "--"}"
-        JourneyStatus.TAKING_OFF       -> "Taking off at ${formatTime(state.takeoffTime)}"
-        JourneyStatus.ON_THE_WAY       -> "Landing at ${formatTime(state.estimatedArrivalTime)}"
-        JourneyStatus.ARRIVAL          -> "Baggage claim will be at carousel: ${state.terminal ?: "--"}"
+        JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk.orDash()}"
+        JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate.orDash()}"
+        JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate.orDash()}"
+        JourneyStatus.BOARDING         -> "Your zone: ${state.boardingZone.orDash()}"
+        JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate.orDash()}"
+        JourneyStatus.TAKING_OFF       -> "Taking off at ${state.takeoffTime.toFormattedTime()}"
+        JourneyStatus.ON_THE_WAY       -> "Landing at ${state.estimatedArrivalTime.toFormattedTime()}"
+        JourneyStatus.ARRIVAL          -> "Baggage claim will be at carousel: ${state.terminal.orDash()}"
         JourneyStatus.CONNECTION_ERROR -> "You seem to be offline. Check your connection."
         JourneyStatus.GENERAL_ERROR    -> "Error has occurred"
-    }
-
-//    private fun buildActionText(state: JourneyContentState): String? = when (state.status) {
-//        JourneyStatus.BOARDING_SOON    -> "Gate will open at ${formatTime(state.boardingTime)}"
-//        JourneyStatus.BOARDING_DELAYED -> "Flight Delayed"
-//        JourneyStatus.BOARDING         -> "Gate closes at ${formatTime(state.gateClosingTime)}"
-//        JourneyStatus.LAST_CALL        -> "No boarding after gate closes"
-//        else                           -> null
-//    }
-//
-    private fun formatTime(instant: java.time.Instant?): String {
-        if (instant == null) return "--"
-        val local = instant.atZone(java.time.ZoneId.systemDefault())
-        return "%d:%02d".format(local.hour, local.minute)
     }
 
     /**
@@ -326,11 +315,9 @@ object LiveUpdateManager {
         JourneyStatus.GENERAL_ERROR    -> "Error"
     }
 
-private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String {
-        val depTime = formatTime(attributes.scheduledDepartureTime)
-        val arrTime = formatTime(
-            state.estimatedArrivalTime ?: attributes.scheduledArrivalTime
-        )
+    private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String {
+        val depTime = attributes.scheduledDepartureTime.toFormattedTime()
+        val arrTime = (state.estimatedArrivalTime ?: attributes.scheduledArrivalTime).toFormattedTime()
         val flightNumber = attributes.flightNumber
         return when (state.status) {
             JourneyStatus.CHECK_IN         -> "$flightNumber • $depTime • Baggage drop"
