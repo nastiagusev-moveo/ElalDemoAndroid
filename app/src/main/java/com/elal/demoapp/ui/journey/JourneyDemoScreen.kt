@@ -11,15 +11,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.elal.demoapp.R
 import com.elal.demoapp.ui.theme.ElAlBlue
 import com.elal.demoapp.ui.theme.ElAlDemoTheme
 import com.elal.demoapp.ui.theme.Green
 import com.elal.demoapp.ui.theme.Red
+import com.elal.demoapp.ui.util.UiText
 
 @Composable
 fun JourneyDemoScreen(viewModel: JourneyViewModel = viewModel()) {
@@ -47,11 +50,11 @@ fun JourneyDemoScreen(viewModel: JourneyViewModel = viewModel()) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JourneyDemoContent(
-    statusText: String,
-    detailText: String?,
+    statusText: UiText,
+    detailText: UiText?,
     isActivityActive: Boolean,
     isSimulating: Boolean,
-    errorMessage: String?,
+    errorMessage: UiText?,
     onStartActivity: () -> Unit,
     onNextStage: () -> Unit,
     onEndActivity: () -> Unit,
@@ -62,7 +65,7 @@ fun JourneyDemoContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Journey") },
+                title = { Text(stringResource(R.string.journey_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = ElAlBlue,
                     titleContentColor = Color.White
@@ -88,20 +91,20 @@ fun JourneyDemoContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Current Stage",
+                    text = stringResource(R.string.current_stage),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = statusText,
+                    text = statusText.asString(),
                     color = Color.White,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
                 if (detailText != null) {
                     Text(
-                        text = detailText,
+                        text = detailText.asString(),
                         color = Color.White.copy(alpha = 0.8f),
                         fontSize = 14.sp
                     )
@@ -116,7 +119,7 @@ fun JourneyDemoContent(
                     enabled = !isActivityActive,
                     colors = ButtonDefaults.buttonColors(containerColor = Green)
                 ) {
-                    Text("Start Activity")
+                    Text(stringResource(R.string.start_activity))
                 }
 
                 Button(
@@ -125,7 +128,7 @@ fun JourneyDemoContent(
                     enabled = isActivityActive,
                     colors = ButtonDefaults.buttonColors(containerColor = ElAlBlue)
                 ) {
-                    Text("Next Stage")
+                    Text(stringResource(R.string.next_stage))
                 }
 
                 Button(
@@ -134,7 +137,7 @@ fun JourneyDemoContent(
                     enabled = isActivityActive,
                     colors = ButtonDefaults.buttonColors(containerColor = Red)
                 ) {
-                    Text("End Activity")
+                    Text(stringResource(R.string.end_activity))
                 }
             }
 
@@ -148,7 +151,7 @@ fun JourneyDemoContent(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Red)
                 ) {
-                    Text("Conn. Error")
+                    Text(stringResource(R.string.conn_error_button))
                 }
 
                 Button(
@@ -156,7 +159,7 @@ fun JourneyDemoContent(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Red)
                 ) {
-                    Text("Error")
+                    Text(stringResource(R.string.error_button))
                 }
             }
 
@@ -172,7 +175,7 @@ fun JourneyDemoContent(
                 colors = ButtonDefaults.buttonColors(containerColor = ElAlBlue)
             ) {
                 Text(
-                    text = "Simulate Journey",
+                    text = stringResource(R.string.simulate_journey),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -191,7 +194,7 @@ fun JourneyDemoContent(
                         color = ElAlBlue
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Simulating journey…", fontSize = 14.sp)
+                    Text(stringResource(R.string.simulating), fontSize = 14.sp)
                 }
             }
 
@@ -199,7 +202,7 @@ fun JourneyDemoContent(
 
             if (errorMessage != null) {
                 Text(
-                    text = errorMessage,
+                    text = errorMessage.asString(),
                     color = Red,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(8.dp)
@@ -214,7 +217,7 @@ fun JourneyDemoContent(
 fun JourneyDemoContentIdlePreview() {
     ElAlDemoTheme {
         JourneyDemoContent(
-            statusText = "Idle",
+            statusText = UiText.DynamicString("Idle"),
             detailText = null,
             isActivityActive = false,
             isSimulating = false,
@@ -234,8 +237,8 @@ fun JourneyDemoContentIdlePreview() {
 fun JourneyDemoContentBoardingPreview() {
     ElAlDemoTheme {
         JourneyDemoContent(
-            statusText = "Boarding",
-            detailText = "Group 3 · Gate B14",
+            statusText = UiText.DynamicString("Boarding"),
+            detailText = UiText.DynamicString("Group 3 · Gate B14"),
             isActivityActive = true,
             isSimulating = false,
             errorMessage = null,
@@ -254,8 +257,8 @@ fun JourneyDemoContentBoardingPreview() {
 fun JourneyDemoContentSimulatingPreview() {
     ElAlDemoTheme {
         JourneyDemoContent(
-            statusText = "On The Way",
-            detailText = "ETA 14:35",
+            statusText = UiText.DynamicString("On The Way"),
+            detailText = UiText.DynamicString("ETA 14:35"),
             isActivityActive = true,
             isSimulating = true,
             errorMessage = null,
@@ -274,11 +277,11 @@ fun JourneyDemoContentSimulatingPreview() {
 fun JourneyDemoContentErrorPreview() {
     ElAlDemoTheme {
         JourneyDemoContent(
-            statusText = "Connection Error",
+            statusText = UiText.DynamicString("Connection Error"),
             detailText = null,
             isActivityActive = true,
             isSimulating = false,
-            errorMessage = "You seem to be offline. Check your connection.",
+            errorMessage = UiText.DynamicString("You seem to be offline. Check your connection."),
             onStartActivity = {},
             onNextStage = {},
             onEndActivity = {},

@@ -9,6 +9,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.ProgressStyle
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.text.BidiFormatter
 import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
@@ -61,17 +62,17 @@ object LiveUpdateManager {
     }
 
     // TODO: for DEBUG only
-    //var debugNextStageIntent: PendingIntent? = null
+    var debugNextStageIntent: PendingIntent? = null
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Journey Updates",
+                context.getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Live updates for your El Al journey"
+                description = context.getString(R.string.notif_channel_description)
             }
             nm.createNotificationChannel(channel)
         }
@@ -138,13 +139,13 @@ object LiveUpdateManager {
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(chipIconFor(state.status))
-            .setContentTitle(buildStatusBarText(attributes, state))
-            .setContentText(buildContentText(attributes, state))
+            .setContentTitle(buildStatusBarText(context, attributes, state))
+            .setContentText(buildContentText(context, attributes, state))
             .setStyle(buildProgressStyle(context, state))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
-        builder.setShortCriticalText(buildChipText(state))
+        builder.setShortCriticalText(buildChipText(context, state))
             .setShowWhen(false)
 
         val notification = builder
@@ -153,13 +154,13 @@ object LiveUpdateManager {
                 state.status == JourneyStatus.CONNECTION_ERROR ||
                 state.status == JourneyStatus.GENERAL_ERROR
             )
-            .build()
+            //.build()
 
         // TODO: for DEBUG only
-        //debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
-        //nm.notify(NOTIFICATION_ID, notification.build())
+        debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
+        nm.notify(NOTIFICATION_ID, notification.build())
 
-        nm.notify(NOTIFICATION_ID, notification)
+        //nm.notify(NOTIFICATION_ID, notification)
     }
 
     /**
@@ -222,7 +223,7 @@ object LiveUpdateManager {
             .setStyledByProgress(true)
 
         val trackerIcon = when (state.status) {
-            JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_taking_off_left_2
+            JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_move_left_2
             JourneyStatus.ON_THE_WAY -> R.drawable.ic_airplane_move_left_2
             JourneyStatus.ARRIVAL    -> R.drawable.ic_airplane_land_left_2
             else                     -> R.drawable.ic_airplane_placeholder_transparent // to avoid Android re-measures and layout jumps
@@ -248,19 +249,24 @@ object LiveUpdateManager {
         return (elapsed.toDouble() / total).coerceIn(0.0, 1.0)
     }
 
-    private fun buildContentText(attributes: JourneyAttributes, state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk.orDash()}"
-        JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate.orDash()}"
-        JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate.orDash()}"
-        JourneyStatus.BOARDING         -> "Your zone: ${state.boardingZone.orDash()}"
-        JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate.orDash()}"
-        JourneyStatus.TAKING_OFF       -> "Taking off at ${state.takeoffTime.toFormattedTime()}"
-        JourneyStatus.ON_THE_WAY       -> "Landing at ${state.estimatedArrivalTime.toFormattedTime()}"
-        JourneyStatus.ARRIVAL          ->
-            if (attributes.arrivalAirportCode == "TLV") "Baggage claim will be at carousel: ${state.terminal.orDash()}"
-            else "Welcome to ${attributes.arrivalCity}"
-        JourneyStatus.CONNECTION_ERROR -> "You seem to be offline. Check your connection."
-        JourneyStatus.GENERAL_ERROR    -> "Error has occurred"
+    private fun buildContentText(context: Context, attributes: JourneyAttributes, state: JourneyContentState): String {
+        val bidi = BidiFormatter.getInstance()
+        return when (state.status) {
+            JourneyStatus.CHECK_IN         -> context.getString(R.string.notif_content_check_in, bidi.unicodeWrap(state.checkInDesk.orDash()))
+            JourneyStatus.BOARDING_SOON    -> context.getString(R.string.notif_content_boarding_soon, bidi.unicodeWrap(state.gate.orDash()))
+            JourneyStatus.BOARDING_DELAYED -> context.getString(R.string.notif_content_boarding_delayed, bidi.unicodeWrap(state.gate.orDash()))
+            JourneyStatus.BOARDING         -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.boardingZone.orDash()))
+            JourneyStatus.LAST_CALL        -> context.getString(R.string.notif_content_last_call, bidi.unicodeWrap(state.gate.orDash()))
+            JourneyStatus.TAKING_OFF       -> context.getString(R.string.notif_content_taking_off, bidi.unicodeWrap(state.takeoffTime.toFormattedTime()))
+            JourneyStatus.ON_THE_WAY       -> context.getString(R.string.notif_content_on_the_way, bidi.unicodeWrap(state.estimatedArrivalTime.toFormattedTime()))
+            JourneyStatus.ARRIVAL          ->
+                if (attributes.arrivalAirportCode == "TLV")
+                    context.getString(R.string.notif_content_arrival_baggage, bidi.unicodeWrap(state.terminal.orDash()))
+                else
+                    context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(attributes.arrivalCity))
+            JourneyStatus.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
+            JourneyStatus.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
+        }
     }
 
     private fun chipIconFor(status: JourneyStatus): Int = when (status) {
@@ -276,34 +282,35 @@ object LiveUpdateManager {
         JourneyStatus.GENERAL_ERROR    -> R.drawable.ic_chip_error
     }
 
-    private fun buildChipText(state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN         -> state.checkInDesk ?: "Check-in"
+    private fun buildChipText(context: Context, state: JourneyContentState): String = when (state.status) {
+        JourneyStatus.CHECK_IN         -> state.checkInDesk ?: context.getString(R.string.notif_chip_check_in)
         JourneyStatus.BOARDING_SOON,
         JourneyStatus.BOARDING_DELAYED,
         JourneyStatus.BOARDING,
-        JourneyStatus.LAST_CALL        -> state.gate ?: "Boarding"
-        JourneyStatus.TAKING_OFF       -> "Please take a seat"
-        JourneyStatus.ON_THE_WAY       -> "En route"
-        JourneyStatus.ARRIVAL          -> "Arrival"
-        JourneyStatus.CONNECTION_ERROR -> "Offline"
-        JourneyStatus.GENERAL_ERROR    -> "Error"
+        JourneyStatus.LAST_CALL        -> state.gate ?: context.getString(R.string.notif_chip_boarding)
+        JourneyStatus.TAKING_OFF       -> context.getString(R.string.notif_chip_taking_off)
+        JourneyStatus.ON_THE_WAY       -> context.getString(R.string.notif_chip_on_the_way)
+        JourneyStatus.ARRIVAL          -> context.getString(R.string.notif_chip_arrival)
+        JourneyStatus.CONNECTION_ERROR -> context.getString(R.string.notif_chip_connection_error)
+        JourneyStatus.GENERAL_ERROR    -> context.getString(R.string.notif_chip_general_error)
     }
 
-    private fun buildStatusBarText(attributes: JourneyAttributes, state: JourneyContentState): String {
+    private fun buildStatusBarText(context: Context, attributes: JourneyAttributes, state: JourneyContentState): String {
+        val bidi = BidiFormatter.getInstance()
         val depTime = attributes.scheduledDepartureTime.toFormattedTime()
         val arrTime = (state.estimatedArrivalTime ?: attributes.scheduledArrivalTime).toFormattedTime()
-        val flightNumber = attributes.flightNumber
+        val flightNumber = bidi.unicodeWrap(attributes.flightNumber)
         return when (state.status) {
-            JourneyStatus.CHECK_IN         -> "$flightNumber • $depTime • Baggage drop"
-            JourneyStatus.BOARDING_SOON    -> "$flightNumber • $depTime • Boarding Soon"
-            JourneyStatus.BOARDING_DELAYED -> "$flightNumber • $depTime • Boarding Delayed"
-            JourneyStatus.BOARDING         -> "$flightNumber • $depTime • Boarding"
-            JourneyStatus.LAST_CALL        -> "$flightNumber • $depTime • Last Call"
-            JourneyStatus.TAKING_OFF       -> "$flightNumber • $depTime • Taking Off"
-            JourneyStatus.ON_THE_WAY       -> "$flightNumber • $arrTime • On The Way"
-            JourneyStatus.ARRIVAL          -> "$flightNumber • $arrTime • Arrival"
-            JourneyStatus.CONNECTION_ERROR -> "Connection Error"
-            JourneyStatus.GENERAL_ERROR    -> "Error"
+            JourneyStatus.CHECK_IN         -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_check_in)}"
+            JourneyStatus.BOARDING_SOON    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding_soon)}"
+            JourneyStatus.BOARDING_DELAYED -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding_delayed)}"
+            JourneyStatus.BOARDING         -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding)}"
+            JourneyStatus.LAST_CALL        -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_last_call)}"
+            JourneyStatus.TAKING_OFF       -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_taking_off)}"
+            JourneyStatus.ON_THE_WAY       -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_on_the_way)}"
+            JourneyStatus.ARRIVAL          -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_arrival)}"
+            JourneyStatus.CONNECTION_ERROR -> context.getString(R.string.notif_statusbar_connection_error)
+            JourneyStatus.GENERAL_ERROR    -> context.getString(R.string.notif_statusbar_general_error)
         }
     }
 }

@@ -9,4 +9,28 @@
     <string name="end_activity">End Activity</string>
     <string name="simulate_journey">Simulate Journey</string>
     <string name="simulating">Simulating journey…</string>
+
+    <!-- Button labels -->
+    <string name="conn_error_button">Conn. Error</string>
+    <string name="error_button">Error</string>
+
+    <!-- Detail texts (format strings) — LTR arrow, departure→arrival -->
+    <string name="detail_start_flight">Flight %1$s · %2$s → %3$s</string>
+    <string name="detail_check_in">Check-in desks: %s</string>
+    <string name="detail_boarding_soon">Gate: %s</string>
+    <string name="detail_boarding_delayed">Delayed, Gate: %s</string>
+    <string name="detail_boarding">Your zone: %s</string>
+    <string name="detail_last_call">No boarding after the gate closes: %s</string>
+    <string name="detail_taking_off">Taking off at %s</string>
+    <string name="detail_on_the_way">Landing at %s</string>
+    <string name="detail_arrival_baggage">Baggage claim will be at carousel: %s</string>
+    <string name="detail_arrival_welcome">Welcome to %s</string>
+    <string name="detail_connection_error">You seem to be offline. Check your connection.</string>
+    <string name="detail_general_error">Error has occurred</string>
+
+    <!-- Error messages -->
+    <string name="error_already_running">A live update is already running</string>
+    <string name="error_no_active">No active live update to modify</string>
+    <string name="error_notifications_disabled">Notifications are not enabled</string>
+    <string name="error_failed_to_start">Failed to start: %s</string>
 </resources>

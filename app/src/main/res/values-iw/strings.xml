@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">אל-על דמו</string>
+    <string name="journey_title">מסע</string>
+    <string name="current_stage">שלב נוכחי</string>
+    <string name="no_active_activity">אין פעילות</string>
+    <string name="start_activity">התחל פעילות</string>
+    <string name="next_stage">השלב הבא</string>
+    <string name="end_activity">סיים פעילות</string>
+    <string name="simulate_journey">סימולציית מסע</string>
+    <string name="simulating">סימולציית מסע פעילה…</string>
+
+    <!-- Button labels -->
+    <string name="conn_error_button">שגיאת חיבור</string>
+    <string name="error_button">שגיאה</string>
+
+    <!-- Detail texts — RTL: flight · arrival ← departure -->
+    <string name="detail_start_flight">טיסה %1$s · %3$s ← %2$s</string>
+    <string name="detail_check_in">דלפקי צ\'ק-אין: %s</string>
+    <string name="detail_boarding_soon">שער: %s</string>
+    <string name="detail_boarding_delayed">עיכוב, שער: %s</string>
+    <string name="detail_boarding">האזור שלך: %s</string>
+    <string name="detail_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
+    <string name="detail_taking_off">המראה ב-%s</string>
+    <string name="detail_on_the_way">נחיתה ב-%s</string>
+    <string name="detail_arrival_baggage">כבודה תגיע לקרוסלה: %s</string>
+    <string name="detail_arrival_welcome">ברוכים הבאים ל-%s</string>
+    <string name="detail_connection_error">נראה שאתה לא מחובר. בדוק את החיבור שלך.</string>
+    <string name="detail_general_error">אירעה שגיאה</string>
+
+    <!-- Error messages -->
+    <string name="error_already_running">עדכון חי כבר פועל</string>
+    <string name="error_no_active">אין עדכון חי פעיל לשינוי</string>
+    <string name="error_notifications_disabled">התראות אינן מופעלות</string>
+    <string name="error_failed_to_start">ההפעלה נכשלה: %s</string>
+</resources>

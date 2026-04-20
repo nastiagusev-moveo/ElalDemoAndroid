@@ -4,7 +4,9 @@ import android.app.Application
 import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.elal.demoapp.R
 import com.elal.demoapp.debug.DebugNextStageReceiver // TODO: DEBUG - Remove before release
+import com.elal.demoapp.ui.util.UiText
 import com.elal.flightsdk.manager.LiveUpdateError
 import com.elal.flightsdk.manager.LiveUpdateManager
 import com.elal.flightsdk.manager.onFailure
@@ -25,11 +27,11 @@ import java.time.Instant
 
 class JourneyViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _statusText = MutableStateFlow("No Active Activity")
-    val statusText: StateFlow<String> = _statusText.asStateFlow()
+    private val _statusText = MutableStateFlow<UiText>(UiText.StringResource(R.string.no_active_activity))
+    val statusText: StateFlow<UiText> = _statusText.asStateFlow()
 
-    private val _detailText = MutableStateFlow<String?>(null)
-    val detailText: StateFlow<String?> = _detailText.asStateFlow()
+    private val _detailText = MutableStateFlow<UiText?>(null)
+    val detailText: StateFlow<UiText?> = _detailText.asStateFlow()
 
     private val _isActivityActive = MutableStateFlow(false)
     val isActivityActive: StateFlow<Boolean> = _isActivityActive.asStateFlow()
@@ -37,8 +39,8 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private val _isSimulating = MutableStateFlow(false)
     val isSimulating: StateFlow<Boolean> = _isSimulating.asStateFlow()
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _errorMessage = MutableStateFlow<UiText?>(null)
+    val errorMessage: StateFlow<UiText?> = _errorMessage.asStateFlow()
 
     private var currentStateIndex = 0
     private var simulationJob: Job? = null
@@ -58,8 +60,13 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             .onSuccess {
                 _isActivityActive.value = true
                 currentStateIndex = 0
-                _statusText.value = state.status.displayName
-                _detailText.value = "Flight LY 001 · TLV → JFK"
+                _statusText.value = UiText.StringResource(state.status.displayNameResId)
+                _detailText.value = UiText.StringResource(
+                    R.string.detail_start_flight,
+                    attributes.flightNumber,
+                    attributes.departureAirportCode,
+                    attributes.arrivalAirportCode
+                )
                 _errorMessage.value = null
             }
             .onFailure { _errorMessage.value = it.toDisplayMessage() }
@@ -87,7 +94,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         _isSimulating.value = false
         simulationJob?.cancel()
         simulationJob = null
-        _statusText.value = "No Active Activity"
+        _statusText.value = UiText.StringResource(R.string.no_active_activity)
         _detailText.value = null
         _errorMessage.value = null
     }
@@ -160,11 +167,11 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun LiveUpdateError.toDisplayMessage(): String = when (this) {
-        is LiveUpdateError.ActivityAlreadyRunning -> "A live update is already running"
-        is LiveUpdateError.NoActiveActivity -> "No active live update to modify"
-        is LiveUpdateError.NotificationsNotEnabled -> "Notifications are not enabled"
-        is LiveUpdateError.FailedToStart -> "Failed to start: ${cause.message}"
+    private fun LiveUpdateError.toDisplayMessage(): UiText = when (this) {
+        is LiveUpdateError.ActivityAlreadyRunning  -> UiText.StringResource(R.string.error_already_running)
+        is LiveUpdateError.NoActiveActivity        -> UiText.StringResource(R.string.error_no_active)
+        is LiveUpdateError.NotificationsNotEnabled -> UiText.StringResource(R.string.error_notifications_disabled)
+        is LiveUpdateError.FailedToStart           -> UiText.StringResource(R.string.error_failed_to_start, cause.message ?: "")
     }
 
     /**
@@ -200,20 +207,22 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     private fun updateUI(state: JourneyContentState) {
         val attributes = SampleFlightData.journeyAttributes
-        _statusText.value = state.status.displayName
+        _statusText.value = UiText.StringResource(state.status.displayNameResId)
         _detailText.value = when (state.status) {
-            JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk.orDash()}"
-            JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate.orDash()}"
-            JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate.orDash()}"
-            JourneyStatus.BOARDING         -> "Your zone: ${state.boardingZone.orDash()}"
-            JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate.orDash()}"
-            JourneyStatus.TAKING_OFF       -> "Taking off at ${state.takeoffTime.toFormattedTime()}"
-            JourneyStatus.ON_THE_WAY       -> "Landing at ${state.estimatedArrivalTime.toFormattedTime()}"
+            JourneyStatus.CHECK_IN         -> UiText.StringResource(R.string.detail_check_in, state.checkInDesk.orDash())
+            JourneyStatus.BOARDING_SOON    -> UiText.StringResource(R.string.detail_boarding_soon, state.gate.orDash())
+            JourneyStatus.BOARDING_DELAYED -> UiText.StringResource(R.string.detail_boarding_delayed, state.gate.orDash())
+            JourneyStatus.BOARDING         -> UiText.StringResource(R.string.detail_boarding, state.boardingZone.orDash())
+            JourneyStatus.LAST_CALL        -> UiText.StringResource(R.string.detail_last_call, state.gate.orDash())
+            JourneyStatus.TAKING_OFF       -> UiText.StringResource(R.string.detail_taking_off, state.takeoffTime.toFormattedTime())
+            JourneyStatus.ON_THE_WAY       -> UiText.StringResource(R.string.detail_on_the_way, state.estimatedArrivalTime.toFormattedTime())
             JourneyStatus.ARRIVAL          ->
-                if (attributes.arrivalAirportCode == "TLV") "Baggage claim will be at carousel: ${state.terminal.orDash()}"
-                else "Welcome to ${attributes.arrivalCity}"
-            JourneyStatus.CONNECTION_ERROR -> "You seem to be offline. Check your connection."
-            JourneyStatus.GENERAL_ERROR    -> "Error has occurred"
+                if (attributes.arrivalAirportCode == "TLV")
+                    UiText.StringResource(R.string.detail_arrival_baggage, state.terminal.orDash())
+                else
+                    UiText.StringResource(R.string.detail_arrival_welcome, attributes.arrivalCity)
+            JourneyStatus.CONNECTION_ERROR -> UiText.StringResource(R.string.detail_connection_error)
+            JourneyStatus.GENERAL_ERROR    -> UiText.StringResource(R.string.detail_general_error)
         }
     }
 

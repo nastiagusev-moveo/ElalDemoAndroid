@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- JourneyStatus display names -->
+    <string name="status_check_in">צ\'ק-אין</string>
+    <string name="status_boarding_soon">עלייה למטוס בקרוב</string>
+    <string name="status_boarding_delayed">עלייה למטוס מתעכבת</string>
+    <string name="status_boarding">עלייה למטוס</string>
+    <string name="status_last_call">קריאה אחרונה</string>
+    <string name="status_taking_off">ממריא</string>
+    <string name="status_on_the_way">בדרך</string>
+    <string name="status_arrival">נחיתה</string>
+    <string name="status_connection_error">שגיאת חיבור</string>
+    <string name="status_general_error">שגיאה כללית</string>
+
+    <!-- Notification channel -->
+    <string name="notif_channel_name">עדכוני טיסה</string>
+    <string name="notif_channel_description">עדכונים חיים לטיסה שלך עם אל-על</string>
+
+    <!-- Notification content text (format strings) -->
+    <string name="notif_content_check_in">דלפקי צ\'ק-אין: %s</string>
+    <string name="notif_content_boarding_soon">שער: %s</string>
+    <string name="notif_content_boarding_delayed">עיכוב, שער: %s</string>
+    <string name="notif_content_boarding">האזור שלך: %s</string>
+    <string name="notif_content_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
+    <string name="notif_content_taking_off">המראה ב-%s</string>
+    <string name="notif_content_on_the_way">נחיתה ב-%s</string>
+    <string name="notif_content_arrival_baggage">כבודה תגיע לקרוסלה: %s</string>
+    <string name="notif_content_arrival_welcome">ברוכים הבאים ל-%s</string>
+    <string name="notif_content_connection_error">נראה שאתה לא מחובר. בדוק את החיבור שלך.</string>
+    <string name="notif_content_general_error">אירעה שגיאה</string>
+
+    <!-- Notification chip text -->
+    <string name="notif_chip_check_in">צ\'ק-אין</string>
+    <string name="notif_chip_boarding">עלייה למטוס</string>
+    <string name="notif_chip_taking_off">אנא התיישב</string>
+    <string name="notif_chip_on_the_way">בדרך</string>
+    <string name="notif_chip_arrival">נחיתה</string>
+    <string name="notif_chip_connection_error">לא מקוון</string>
+    <string name="notif_chip_general_error">שגיאה</string>
+
+    <!-- Notification status bar trailing labels -->
+    <string name="notif_statusbar_check_in">שקילת מטען</string>
+    <string name="notif_statusbar_boarding_soon">עלייה למטוס בקרוב</string>
+    <string name="notif_statusbar_boarding_delayed">עלייה מתעכבת</string>
+    <string name="notif_statusbar_boarding">עלייה למטוס</string>
+    <string name="notif_statusbar_last_call">קריאה אחרונה</string>
+    <string name="notif_statusbar_taking_off">ממריא</string>
+    <string name="notif_statusbar_on_the_way">בדרך</string>
+    <string name="notif_statusbar_arrival">נחיתה</string>
+    <string name="notif_statusbar_connection_error">שגיאת חיבור</string>
+    <string name="notif_statusbar_general_error">שגיאה</string>
+</resources>
