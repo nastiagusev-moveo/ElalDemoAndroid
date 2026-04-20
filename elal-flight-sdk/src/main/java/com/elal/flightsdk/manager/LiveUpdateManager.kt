@@ -60,8 +60,8 @@ object LiveUpdateManager {
         }
     }
 
-    // TODO: DEBUG - Remove before release
-    var debugNextStageIntent: PendingIntent? = null
+    // TODO: for DEBUG only
+    //var debugNextStageIntent: PendingIntent? = null
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -139,43 +139,27 @@ object LiveUpdateManager {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(chipIconFor(state.status))
             .setContentTitle(buildStatusBarText(attributes, state))
-            .setContentText(buildContentText(state))
+            .setContentText(buildContentText(attributes, state))
             .setStyle(buildProgressStyle(context, state))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
-
-        // Status-bar chip label: static text for now.
-        // Chronometer countdown is commented out — it truncates seconds and drifts from the real ETA.
-//        if (state.status == JourneyStatus.ON_THE_WAY) {
-//            val eta = onTheWayEta ?: state.estimatedArrivalTime
-//            if (eta != null) {
-//                builder.setWhen(eta.toEpochMilli())
-//                    .setShowWhen(true)
-//                    .setUsesChronometer(true)
-//                    .setChronometerCountDown(true)
-//            } else {
-//                builder.setShortCriticalText(buildChipText(state))
-//            }
-//        } else {
-            builder.setShortCriticalText(buildChipText(state))
-                .setShowWhen(false)
-//        }
+        builder.setShortCriticalText(buildChipText(state))
+            .setShowWhen(false)
 
         val notification = builder
-            // Silence: for Errors and when airplane moves (ON_THE_WAY stage)
             .setOnlyAlertOnce(
                 isSelfUpdate ||
                 state.status == JourneyStatus.CONNECTION_ERROR ||
                 state.status == JourneyStatus.GENERAL_ERROR
             )
-            //.build() // TODO: DEBUG - revert
+            .build()
 
-        // TODO: DEBUG - Remove before release
-        debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
+        // TODO: for DEBUG only
+        //debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
+        //nm.notify(NOTIFICATION_ID, notification.build())
 
-        nm.notify(NOTIFICATION_ID, notification.build())
-//        nm.notify(NOTIFICATION_ID, notification) // TODO: DEBUG - revert
+        nm.notify(NOTIFICATION_ID, notification)
     }
 
     /**
@@ -264,7 +248,7 @@ object LiveUpdateManager {
         return (elapsed.toDouble() / total).coerceIn(0.0, 1.0)
     }
 
-    private fun buildContentText(state: JourneyContentState): String = when (state.status) {
+    private fun buildContentText(attributes: JourneyAttributes, state: JourneyContentState): String = when (state.status) {
         JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk.orDash()}"
         JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate.orDash()}"
         JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate.orDash()}"
@@ -272,15 +256,13 @@ object LiveUpdateManager {
         JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate.orDash()}"
         JourneyStatus.TAKING_OFF       -> "Taking off at ${state.takeoffTime.toFormattedTime()}"
         JourneyStatus.ON_THE_WAY       -> "Landing at ${state.estimatedArrivalTime.toFormattedTime()}"
-        JourneyStatus.ARRIVAL          -> "Baggage claim will be at carousel: ${state.terminal.orDash()}"
+        JourneyStatus.ARRIVAL          ->
+            if (attributes.arrivalAirportCode == "TLV") "Baggage claim will be at carousel: ${state.terminal.orDash()}"
+            else "Welcome to ${attributes.arrivalCity}"
         JourneyStatus.CONNECTION_ERROR -> "You seem to be offline. Check your connection."
         JourneyStatus.GENERAL_ERROR    -> "Error has occurred"
     }
 
-    /**
-     * Icon shown in the status-bar chip (Android 16 Live Update promoted chip)
-     * and as the small icon in the notification header.
-     */
     private fun chipIconFor(status: JourneyStatus): Int = when (status) {
         JourneyStatus.CHECK_IN         -> R.drawable.ic_chip_checkin
         JourneyStatus.BOARDING_SOON,
@@ -294,10 +276,6 @@ object LiveUpdateManager {
         JourneyStatus.GENERAL_ERROR    -> R.drawable.ic_chip_error
     }
 
-    /**
-     * Short text shown next to the chip icon in the status bar.
-     * Keep it tight — the chip has very limited width.
-     */
     private fun buildChipText(state: JourneyContentState): String = when (state.status) {
         JourneyStatus.CHECK_IN         -> state.checkInDesk ?: "Check-in"
         JourneyStatus.BOARDING_SOON,

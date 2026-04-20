@@ -12,6 +12,8 @@ import com.elal.flightsdk.manager.onSuccess
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
 import com.elal.flightsdk.sample.SampleFlightData
+import com.elal.flightsdk.utils.orDash
+import com.elal.flightsdk.utils.toFormattedTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -197,28 +199,21 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun updateUI(state: JourneyContentState) {
+        val attributes = SampleFlightData.journeyAttributes
         _statusText.value = state.status.displayName
         _detailText.value = when (state.status) {
-            JourneyStatus.CHECK_IN ->
-                "Desk: ${state.checkInDesk ?: "--"}"
-            JourneyStatus.BOARDING_SOON ->
-                "Gate ${state.gate ?: "--"} · Seat ${state.seat ?: "--"} · Boarding soon"
-            JourneyStatus.BOARDING_DELAYED ->
-                "Gate ${state.gate ?: "--"} · Boarding delayed"
-            JourneyStatus.BOARDING ->
-                "Gate ${state.gate ?: "--"} · Seat ${state.seat ?: "--"} · Group ${state.boardingZone ?: "--"}"
-            JourneyStatus.LAST_CALL ->
-                "Gate ${state.gate ?: "--"} · Gate closing soon"
-            JourneyStatus.TAKING_OFF ->
-                "Taking off soon"
-            JourneyStatus.ON_THE_WAY ->
-                "On the way"
-            JourneyStatus.ARRIVAL ->
-                "Carousel ${state.baggageCarousel ?: "--"}"
-            JourneyStatus.CONNECTION_ERROR ->
-                "Connection error"
-            JourneyStatus.GENERAL_ERROR ->
-                "Something went wrong"
+            JourneyStatus.CHECK_IN         -> "Check-in desks: ${state.checkInDesk.orDash()}"
+            JourneyStatus.BOARDING_SOON    -> "Gate: ${state.gate.orDash()}"
+            JourneyStatus.BOARDING_DELAYED -> "Delayed, Gate: ${state.gate.orDash()}"
+            JourneyStatus.BOARDING         -> "Your zone: ${state.boardingZone.orDash()}"
+            JourneyStatus.LAST_CALL        -> "No boarding after the gate closes: ${state.gate.orDash()}"
+            JourneyStatus.TAKING_OFF       -> "Taking off at ${state.takeoffTime.toFormattedTime()}"
+            JourneyStatus.ON_THE_WAY       -> "Landing at ${state.estimatedArrivalTime.toFormattedTime()}"
+            JourneyStatus.ARRIVAL          ->
+                if (attributes.arrivalAirportCode == "TLV") "Baggage claim will be at carousel: ${state.terminal.orDash()}"
+                else "Welcome to ${attributes.arrivalCity}"
+            JourneyStatus.CONNECTION_ERROR -> "You seem to be offline. Check your connection."
+            JourneyStatus.GENERAL_ERROR    -> "Error has occurred"
         }
     }
 
