@@ -29,7 +29,7 @@ object LiveUpdateManager {
     private const val NOTIFICATION_ID = 7001
     private const val CHANNEL_ID = "elal_journey"
     private const val PROGRESS_MAX = 240
-    private const val SELF_UPDATE_INTERVAL_MS = 5_000L
+    private const val SELF_UPDATE_INTERVAL_MS = 1_000L
 
     // Android's ProgressStyle gap bug Fixed
     private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
@@ -44,8 +44,6 @@ object LiveUpdateManager {
     private var onTheWayStartTime: java.time.Instant? = null
     private var onTheWayEta: java.time.Instant? = null
     private var appContext: Context? = null
-
-    // Self-update timer: re-posts the notification periodically so the airplane icon moves live.
     private val handler = Handler(Looper.getMainLooper())
     private var selfUpdateState: JourneyContentState? = null
     private val selfUpdateRunnable: Runnable = object : Runnable {
@@ -64,7 +62,6 @@ object LiveUpdateManager {
 
     // TODO: DEBUG - Remove before release
     var debugNextStageIntent: PendingIntent? = null
-    //
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -148,22 +145,22 @@ object LiveUpdateManager {
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
 
-        // Status-bar chip label: setShortCriticalText for static text,
-        // setWhen + chronometer countdown for ON_THE_WAY's live "H:MM" remaining.
-        if (state.status == JourneyStatus.ON_THE_WAY) {
-            val eta = onTheWayEta ?: state.estimatedArrivalTime
-            if (eta != null) {
-                builder.setWhen(eta.toEpochMilli())
-                    .setShowWhen(true)
-                    .setUsesChronometer(true)
-                    .setChronometerCountDown(true)
-            } else {
-                builder.setShortCriticalText(buildChipText(state))
-            }
-        } else {
+        // Status-bar chip label: static text for now.
+        // Chronometer countdown is commented out — it truncates seconds and drifts from the real ETA.
+//        if (state.status == JourneyStatus.ON_THE_WAY) {
+//            val eta = onTheWayEta ?: state.estimatedArrivalTime
+//            if (eta != null) {
+//                builder.setWhen(eta.toEpochMilli())
+//                    .setShowWhen(true)
+//                    .setUsesChronometer(true)
+//                    .setChronometerCountDown(true)
+//            } else {
+//                builder.setShortCriticalText(buildChipText(state))
+//            }
+//        } else {
             builder.setShortCriticalText(buildChipText(state))
                 .setShowWhen(false)
-        }
+//        }
 
         val notification = builder
             // Silence: for Errors and when airplane moves (ON_THE_WAY stage)
@@ -176,7 +173,6 @@ object LiveUpdateManager {
 
         // TODO: DEBUG - Remove before release
         debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
-        //
 
         nm.notify(NOTIFICATION_ID, notification.build())
 //        nm.notify(NOTIFICATION_ID, notification) // TODO: DEBUG - revert
