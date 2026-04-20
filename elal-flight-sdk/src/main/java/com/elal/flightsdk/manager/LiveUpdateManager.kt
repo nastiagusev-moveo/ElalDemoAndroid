@@ -186,7 +186,7 @@ object LiveUpdateManager {
         val shortSegLen  = PROGRESS_MAX / 5                      // 48
         val seg0Len      = shortSegLen - SEG0_COMPENSATION       // 38
         val seg1Len      = shortSegLen                           // 48
-        val flightStart  = seg0Len + seg1Len                     // 86
+        val flightStart  = seg0Len + seg1Len + 2                    // 88
         val longSegLen   = PROGRESS_MAX - flightStart            // 154
 
         val progressIndex = when (state.status) {
@@ -209,7 +209,7 @@ object LiveUpdateManager {
             state.status == JourneyStatus.ON_THE_WAY -> {
                 val flightProgress = computeFlightProgress(state)
                 val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen - 1)
-                flightStart + 1 + filled
+                flightStart + filled
             }
             progressIndex >= 4 -> PROGRESS_MAX      // ARRIVAL — end of bar
             progressIndex >= 2 -> flightStart       // TAKING_OFF — start of flight path
@@ -223,7 +223,7 @@ object LiveUpdateManager {
             .setStyledByProgress(true)
 
         val trackerIcon = when (state.status) {
-            JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_move_left_2
+            JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_taking_off_left_2
             JourneyStatus.ON_THE_WAY -> R.drawable.ic_airplane_move_left_2
             JourneyStatus.ARRIVAL    -> R.drawable.ic_airplane_land_left_2
             else                     -> R.drawable.ic_airplane_placeholder_transparent // to avoid Android re-measures and layout jumps
