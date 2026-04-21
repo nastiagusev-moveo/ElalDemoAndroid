@@ -14,10 +14,13 @@ import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
+import com.google.gson.Gson
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
-import java.time.temporal.ChronoUnit
+import com.elal.flightsdk.utils.toHhMmSs
+import com.elal.flightsdk.utils.toMmSs
+import com.elal.flightsdk.utils.toMsReadable
 
 /**
  * Manages the lifecycle of Live Update notifications.
@@ -27,11 +30,9 @@ import java.time.temporal.ChronoUnit
  */
 object LiveUpdateManager {
 
-    private const val NOTIFICATION_ID = 7001
+    internal const val NOTIFICATION_ID = 7001
     private const val CHANNEL_ID = "elal_journey"
     private const val PROGRESS_MAX = 240
-    private const val SELF_UPDATE_INTERVAL_MS = 1_000L
-
     // Android's ProgressStyle gap bug Fixed
     private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
 
@@ -40,10 +41,12 @@ object LiveUpdateManager {
 
     private val log = Logger("LiveUpdateManager")
 
+    var uiDebugMode: Boolean = false
+
     private var currentAttributes: JourneyAttributes? = null
     val isActive: Boolean get() = currentAttributes != null
-    private var onTheWayStartTime: java.time.Instant? = null
-    private var onTheWayEta: java.time.Instant? = null
+    private var flightStartRealtimeMs: Long = 0L
+    private var flightTotalDurationMs: Long = 0L
     private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
     private var selfUpdateState: JourneyContentState? = null
@@ -52,12 +55,17 @@ object LiveUpdateManager {
             val ctx = appContext ?: return
             val attrs = currentAttributes ?: return
             val state = selfUpdateState ?: return
+            val progress = computeFlightProgress()
+            val elapsedMs = android.os.SystemClock.elapsedRealtime() - flightStartRealtimeMs
+            val nextTickMs = calculateNextTickInterval()
+            log.d("✈️ FLIGHT PROGRESS: ${(progress * 100).toInt()}% Complete | Elapsed: ${elapsedMs.toMmSs()} / ${flightTotalDurationMs.toMmSs()} | Next update in ${nextTickMs / 1000}s")
             postNotification(ctx, attrs, state, isSelfUpdate = true)
-            if (computeFlightProgress(state) >= 1.0) {
+            if (progress >= 1.0) {
+                log.i("🏁 FLIGHT COMPLETE: Progress reached 100% — stopping updates")
                 stopSelfUpdate()
                 return
             }
-            handler.postDelayed(this, SELF_UPDATE_INTERVAL_MS)
+            handler.postDelayed(this, nextTickMs)
         }
     }
 
@@ -84,8 +92,8 @@ object LiveUpdateManager {
         appContext = context.applicationContext
         ensureChannel(context)
         currentAttributes = attributes
-        onTheWayStartTime = null
-        onTheWayEta = null
+        flightStartRealtimeMs = 0L
+        flightTotalDurationMs = 0L
         postNotification(context, attributes, initialState)
         return Result.Success(Unit)
     }
@@ -93,17 +101,33 @@ object LiveUpdateManager {
     fun updateJourney(context: Context, state: JourneyContentState): EmptyResult<LiveUpdateError> {
         val attrs = currentAttributes ?: return Result.Failure(LiveUpdateError.NoActiveActivity())
         log.d("updateJourney: status=${state.status}")
+
+        saveStateToPrefs(context, attrs, state)
+
+        val serviceIntent = android.content.Intent(context, OnTheWayService::class.java)
+
         if (state.status == JourneyStatus.ON_THE_WAY) {
-            if (onTheWayStartTime == null) {
-                onTheWayStartTime = java.time.Instant.now()
-                onTheWayEta = state.estimatedArrivalTime
+            if (selfUpdateState == null) {
+                setupRealtimeClocks(attrs, state)
+                startSelfUpdate(state)
+                androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
+            } else {
+                // Re-anchor in case FCM pushed an updated ETA mid-flight
+                selfUpdateState = state
+                setupRealtimeClocks(attrs, state)
             }
-            startSelfUpdate(state)
         } else {
-            onTheWayStartTime = null
-            onTheWayEta = null
             stopSelfUpdate()
+            flightStartRealtimeMs = 0L
+            flightTotalDurationMs = 0L
+            // ARRIVAL: keep the service alive so Android doesn't tear down the foreground
+            // notification before postNotification() replaces it — killing it here causes a
+            // dismiss/reopen flicker. endJourney() handles the cleanup a few seconds later.
+            if (state.status != JourneyStatus.ARRIVAL) {
+                context.stopService(serviceIntent)
+            }
         }
+
         postNotification(context, attrs, state)
         return Result.Success(Unit)
     }
@@ -111,32 +135,45 @@ object LiveUpdateManager {
     fun endJourney(context: Context) {
         log.i("endJourney")
         stopSelfUpdate()
+        context.stopService(android.content.Intent(context, OnTheWayService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
+        context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE).edit().clear().apply()
         currentAttributes = null
-        onTheWayStartTime = null
-        onTheWayEta = null
+        flightStartRealtimeMs = 0L
+        flightTotalDurationMs = 0L
         appContext = null
     }
 
     private fun startSelfUpdate(state: JourneyContentState) {
         selfUpdateState = state
         handler.removeCallbacks(selfUpdateRunnable)
-        handler.postDelayed(selfUpdateRunnable, SELF_UPDATE_INTERVAL_MS)
+        val tickMs = calculateNextTickInterval()
+        log.i("🚀 SELF-UPDATE STARTED: Airplane will move every ${tickMs / 1000}s")
+        handler.postDelayed(selfUpdateRunnable, tickMs)
     }
 
     private fun stopSelfUpdate() {
         handler.removeCallbacks(selfUpdateRunnable)
         selfUpdateState = null
+        log.i("🛑 SELF-UPDATE STOPPED")
     }
 
-    private fun postNotification(
+    fun pauseTicks() {
+        handler.removeCallbacks(selfUpdateRunnable)
+    }
+
+    fun resumeTicks() {
+        handler.removeCallbacks(selfUpdateRunnable)
+        // Posts immediately; elapsedRealtime() calculates the correct position
+        handler.post(selfUpdateRunnable)
+    }
+
+    private fun buildNotification(
         context: Context,
         attributes: JourneyAttributes,
         state: JourneyContentState,
         isSelfUpdate: Boolean = false
-    ) {
-        val nm = context.getSystemService(NotificationManager::class.java)
-
+    ): android.app.Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(chipIconFor(state.status))
             .setContentTitle(buildStatusBarText(context, attributes, state))
@@ -147,20 +184,53 @@ object LiveUpdateManager {
             .setRequestPromotedOngoing(true)
         builder.setShortCriticalText(buildChipText(context, state))
             .setShowWhen(false)
-
-        val notification = builder
             .setOnlyAlertOnce(
                 isSelfUpdate ||
                 state.status == JourneyStatus.CONNECTION_ERROR ||
                 state.status == JourneyStatus.GENERAL_ERROR
             )
-            //.build()
-
         // TODO: for DEBUG only
-        debugNextStageIntent?.let { notification.addAction(0, "Next Stage", it) }
-        nm.notify(NOTIFICATION_ID, notification.build())
+        debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
+        return builder.build()
+    }
 
-        //nm.notify(NOTIFICATION_ID, notification)
+    private fun postNotification(
+        context: Context,
+        attributes: JourneyAttributes,
+        state: JourneyContentState,
+        isSelfUpdate: Boolean = false
+    ) {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        nm.notify(NOTIFICATION_ID, buildNotification(context, attributes, state, isSelfUpdate))
+    }
+
+    fun buildCurrentNotification(context: Context): android.app.Notification? {
+        val attrs = currentAttributes ?: return null
+        val state = selfUpdateState ?: return null
+        return buildNotification(context, attrs, state, isSelfUpdate = true)
+    }
+
+    private fun saveStateToPrefs(context: Context, attrs: JourneyAttributes, state: JourneyContentState) {
+        val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
+        val gson = Gson()
+        prefs.edit()
+            .putString("attrs", gson.toJson(attrs))
+            .putString("state", gson.toJson(state))
+            .apply()
+    }
+
+    fun restoreFromPrefs(context: Context) {
+        val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
+        val attrsJson = prefs.getString("attrs", null)
+        val stateJson = prefs.getString("state", null)
+        if (attrsJson != null && stateJson != null) {
+            val gson = Gson()
+            currentAttributes = gson.fromJson(attrsJson, JourneyAttributes::class.java)
+            val state = gson.fromJson(stateJson, JourneyContentState::class.java)
+            appContext = context.applicationContext
+            setupRealtimeClocks(currentAttributes!!, state)
+            startSelfUpdate(state)
+        }
     }
 
     /**
@@ -207,8 +277,9 @@ object LiveUpdateManager {
 
         val progress: Int = when {
             state.status == JourneyStatus.ON_THE_WAY -> {
-                val flightProgress = computeFlightProgress(state)
+                val flightProgress = computeFlightProgress()
                 val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen - 1)
+                if (uiDebugMode) log.d("[AIRPLANE] fill=$filled / $longSegLen | progressBar=${flightStart + filled} / $PROGRESS_MAX")
                 flightStart + filled
             }
             progressIndex >= 4 -> PROGRESS_MAX      // ARRIVAL — end of bar
@@ -233,20 +304,44 @@ object LiveUpdateManager {
         return style
     }
 
-    /**
-     * Returns 0.0 → 1.0 based on time elapsed since ON_THE_WAY was entered
-     * vs the total duration until estimatedArrivalTime (truncated to the minute boundary).
-     * Uses the latched [onTheWayEta] so repeated updateJourney calls with a fresh state
-     * can never shift the ETA and cause the airplane to jump or freeze.
-     */
-    private fun computeFlightProgress(state: JourneyContentState): Double {
-        val eta       = onTheWayEta       ?: return 0.0
-        val startTime = onTheWayStartTime ?: return 0.0
-        val etaTruncated = eta.truncatedTo(ChronoUnit.MINUTES)
-        val total = etaTruncated.epochSecond - startTime.epochSecond
-        if (total <= 0) return 1.0
-        val elapsed = java.time.Instant.now().epochSecond - startTime.epochSecond
-        return (elapsed.toDouble() / total).coerceIn(0.0, 1.0)
+    private fun setupRealtimeClocks(attrs: JourneyAttributes, state: JourneyContentState) {
+        val eta = state.estimatedArrivalTime ?: attrs.scheduledArrivalTime
+        val etaSource = if (state.estimatedArrivalTime != null) "state.estimatedArrivalTime" else "attrs.scheduledArrivalTime (fallback)"
+        val departureMs = attrs.scheduledDepartureTime.toEpochMilli()
+        val etaMs = eta.toEpochMilli()
+        val now = java.time.Instant.now()
+        val nowWallClockMs = now.toEpochMilli()
+        flightTotalDurationMs = etaMs - departureMs
+        val elapsedSinceDepartureMs = nowWallClockMs - departureMs
+        val remainingMs = etaMs - nowWallClockMs
+        // Anchors monotonic clock to real elapsed time. Survives reboots because the
+        // anchor is recomputed from wall-clock each time setupRealtimeClocks is called.
+        flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime() - elapsedSinceDepartureMs
+        log.i(
+            "\n📋 JOURNEY TIMELINE" +
+            "\n   Scheduled Departure : ${attrs.scheduledDepartureTime.toHhMmSs()}" +
+            "\n   Scheduled Arrival   : ${attrs.scheduledArrivalTime.toHhMmSs()}  (from attributes)" +
+            "\n   Estimated Arrival   : ${eta.toHhMmSs()}  ($etaSource)" +
+            "\n   Now                 : ${now.toHhMmSs()}" +
+            "\n   ─────────────────────────────────────" +
+            "\n   Total Duration      : ${flightTotalDurationMs.toMsReadable()}  (ETA − Departure)" +
+            "\n   Elapsed Since Dep.  : ${elapsedSinceDepartureMs.toMsReadable()}  (Now − Departure)  ← initial jump" +
+            "\n   Remaining           : ${remainingMs.toMsReadable()}  (ETA − Now)" +
+            "\n   ─────────────────────────────────────" +
+            "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
+        )
+    }
+
+    private fun calculateNextTickInterval(): Long {
+        if (flightTotalDurationMs <= 0) return 1_000L
+        val onePercentMs = flightTotalDurationMs / 100
+        return onePercentMs.coerceIn(1_000L, 300_000L)
+    }
+
+    private fun computeFlightProgress(): Double {
+        if (flightTotalDurationMs <= 0) return 1.0
+        val elapsed = android.os.SystemClock.elapsedRealtime() - flightStartRealtimeMs
+        return (elapsed.toDouble() / flightTotalDurationMs).coerceIn(0.0, 1.0)
     }
 
     private fun buildContentText(context: Context, attributes: JourneyAttributes, state: JourneyContentState): String {

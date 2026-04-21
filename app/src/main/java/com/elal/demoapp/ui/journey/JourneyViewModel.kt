@@ -11,6 +11,7 @@ import com.elal.flightsdk.manager.LiveUpdateError
 import com.elal.flightsdk.manager.LiveUpdateManager
 import com.elal.flightsdk.manager.onFailure
 import com.elal.flightsdk.manager.onSuccess
+import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
 import com.elal.flightsdk.sample.SampleFlightData
@@ -51,8 +52,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         get() = (getApplication<Application>().applicationInfo.flags and
                 ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
-    fun startActivity() {
-        val attributes = SampleFlightData.journeyAttributes
+    fun startActivity(attributes: JourneyAttributes = SampleFlightData.journeyAttributes) {
         val sequence = SampleFlightData.journeySimulationSequence
         val state = sequence[0]
         if (isDebuggable) DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
@@ -102,7 +102,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     fun simulateJourney() {
         if (_isSimulating.value) return
 
-        startActivity()
+        startActivity(SampleFlightData.journeyAttributesForSimulation)
         if (!_isActivityActive.value) return
 
         _isSimulating.value = true
