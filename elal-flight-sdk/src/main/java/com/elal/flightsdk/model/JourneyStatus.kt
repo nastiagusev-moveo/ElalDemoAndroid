@@ -2,7 +2,9 @@ package com.elal.flightsdk.model
 
 import androidx.annotation.StringRes
 import com.elal.flightsdk.R
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class JourneyStatus(@StringRes val displayNameResId: Int, val colorInt: Int) {
     CHECK_IN(R.string.status_check_in,                 0xFF2196F3.toInt()),
     BOARDING_SOON(R.string.status_boarding_soon,       0xFF2196F3.toInt()),

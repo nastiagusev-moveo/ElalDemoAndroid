@@ -87,7 +87,7 @@ object SampleFlightData {
             val onTheWay = JourneyContentState(
                 status = JourneyStatus.ON_THE_WAY,
                 estimatedArrivalTime = now
-                    .plus(2, ChronoUnit.MINUTES)
+                    .plus(5, ChronoUnit.MINUTES)
                     .plus(30, ChronoUnit.SECONDS)  // to get clean 2 minutes for the simulation plus (6 stages each stage 5 sec = 30 sec)
             )
 

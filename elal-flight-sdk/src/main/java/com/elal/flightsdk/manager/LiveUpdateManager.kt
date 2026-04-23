@@ -14,7 +14,8 @@ import com.elal.flightsdk.R
 import com.elal.flightsdk.model.JourneyAttributes
 import com.elal.flightsdk.model.JourneyContentState
 import com.elal.flightsdk.model.JourneyStatus
-import com.google.gson.Gson
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
@@ -40,6 +41,11 @@ object LiveUpdateManager {
     private const val ProgressBarGrey = 0xFF8E93A5.toInt()
 
     private val log = Logger("LiveUpdateManager")
+
+    private val jsonFormat = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
     var uiDebugMode: Boolean = false
 
@@ -212,10 +218,9 @@ object LiveUpdateManager {
 
     private fun saveStateToPrefs(context: Context, attrs: JourneyAttributes, state: JourneyContentState) {
         val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
-        val gson = Gson()
         prefs.edit()
-            .putString("attrs", gson.toJson(attrs))
-            .putString("state", gson.toJson(state))
+            .putString("attrs", jsonFormat.encodeToString(attrs))
+            .putString("state", jsonFormat.encodeToString(state))
             .apply()
     }
 
@@ -223,13 +228,17 @@ object LiveUpdateManager {
         val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
         val attrsJson = prefs.getString("attrs", null)
         val stateJson = prefs.getString("state", null)
-        if (attrsJson != null && stateJson != null) {
-            val gson = Gson()
-            currentAttributes = gson.fromJson(attrsJson, JourneyAttributes::class.java)
-            val state = gson.fromJson(stateJson, JourneyContentState::class.java)
+        if (attrsJson == null || stateJson == null) return
+        try {
+            val attrs = jsonFormat.decodeFromString<JourneyAttributes>(attrsJson)
+            val state = jsonFormat.decodeFromString<JourneyContentState>(stateJson)
+            currentAttributes = attrs
             appContext = context.applicationContext
-            setupRealtimeClocks(currentAttributes!!, state)
+            setupRealtimeClocks(attrs, state)
             startSelfUpdate(state)
+        } catch (e: Exception) {
+            log.e("restoreFromPrefs: corrupt prefs, clearing — ${e.message}", e)
+            prefs.edit().clear().apply()
         }
     }
 
