@@ -70,7 +70,7 @@ object LiveUpdateManager {
     }
 
     // TODO: for DEBUG only
-    var debugNextStageIntent: PendingIntent? = null
+    //var debugNextStageIntent: PendingIntent? = null
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -190,7 +190,7 @@ object LiveUpdateManager {
                 state.status == JourneyStatus.GENERAL_ERROR
             )
         // TODO: for DEBUG only
-        debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
+        //debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
         return builder.build()
     }
 

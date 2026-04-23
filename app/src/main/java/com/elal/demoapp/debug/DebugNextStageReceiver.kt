@@ -36,7 +36,7 @@ class DebugNextStageReceiver : BroadcastReceiver() {
 
         fun setup(context: Context) {
             currentIndex = 0
-            LiveUpdateManager.debugNextStageIntent = createPendingIntent(context) // TODO: for DEBUG only
+            //LiveUpdateManager.debugNextStageIntent = createPendingIntent(context) // TODO: for DEBUG only
         }
 
         fun syncIndex(index: Int) {
@@ -44,7 +44,7 @@ class DebugNextStageReceiver : BroadcastReceiver() {
         }
 
         fun teardown() {
-            LiveUpdateManager.debugNextStageIntent = null // TODO: for DEBUG only
+            //LiveUpdateManager.debugNextStageIntent = null // TODO: for DEBUG only
         }
 
         private fun createPendingIntent(context: Context): PendingIntent {
