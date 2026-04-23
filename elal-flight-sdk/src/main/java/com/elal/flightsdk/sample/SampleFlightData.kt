@@ -9,14 +9,13 @@ import java.time.temporal.ChronoUnit
 object SampleFlightData {
 
     val journeyAttributes: JourneyAttributes
-        get() = buildAttributes(bufferSeconds = 0)
+        get() = buildAttributes()
 
-    // Simulation: larger buffer absorbs the 30s the loop takes to reach ON_THE_WAY (6 stages × 5s)
     val journeyAttributesForSimulation: JourneyAttributes
-        get() = buildAttributes(bufferSeconds = 30)
+        get() = buildAttributes()
 
-    private fun buildAttributes(bufferSeconds: Long): JourneyAttributes {
-        val departure = Instant.now().plus(bufferSeconds, ChronoUnit.SECONDS)
+    private fun buildAttributes(): JourneyAttributes {
+        val departure = Instant.now()
         return JourneyAttributes(
             flightNumber = "LY 317",
             airline = "El Al",
@@ -87,7 +86,9 @@ object SampleFlightData {
 
             val onTheWay = JourneyContentState(
                 status = JourneyStatus.ON_THE_WAY,
-                estimatedArrivalTime = now.plus(2, ChronoUnit.MINUTES)
+                estimatedArrivalTime = now
+                    .plus(2, ChronoUnit.MINUTES)
+                    .plus(30, ChronoUnit.SECONDS)  // to get clean 2 minutes for the simulation plus (6 stages each stage 5 sec = 30 sec)
             )
 
             val arrival = JourneyContentState(

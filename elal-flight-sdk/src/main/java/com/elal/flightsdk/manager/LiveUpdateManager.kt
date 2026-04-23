@@ -148,14 +148,14 @@ object LiveUpdateManager {
         selfUpdateState = state
         handler.removeCallbacks(selfUpdateRunnable)
         val tickMs = calculateNextTickInterval()
-        log.i("🚀 SELF-UPDATE STARTED: Airplane will move every ${tickMs / 1000}s")
+        log.i(" SELF-UPDATE STARTED: Airplane will move every ${tickMs / 1000}s")
         handler.postDelayed(selfUpdateRunnable, tickMs)
     }
 
     private fun stopSelfUpdate() {
         handler.removeCallbacks(selfUpdateRunnable)
         selfUpdateState = null
-        log.i("🛑 SELF-UPDATE STOPPED")
+        log.i("🛑 SELF-UPDATE NOT ACTIVE")
     }
 
     fun pauseTicks() {
@@ -307,26 +307,24 @@ object LiveUpdateManager {
     private fun setupRealtimeClocks(attrs: JourneyAttributes, state: JourneyContentState) {
         val eta = state.estimatedArrivalTime ?: attrs.scheduledArrivalTime
         val etaSource = if (state.estimatedArrivalTime != null) "state.estimatedArrivalTime" else "attrs.scheduledArrivalTime (fallback)"
-        val departureMs = attrs.scheduledDepartureTime.toEpochMilli()
-        val etaMs = eta.toEpochMilli()
         val now = java.time.Instant.now()
-        val nowWallClockMs = now.toEpochMilli()
-        flightTotalDurationMs = etaMs - departureMs
-        val elapsedSinceDepartureMs = nowWallClockMs - departureMs
-        val remainingMs = etaMs - nowWallClockMs
-        // Anchors monotonic clock to real elapsed time. Survives reboots because the
-        // anchor is recomputed from wall-clock each time setupRealtimeClocks is called.
-        flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime() - elapsedSinceDepartureMs
+        val remainingMs = eta.toEpochMilli() - now.toEpochMilli()
+        log.d("(Arrival - now) => remainingMs: $remainingMs")
+
+        // When ON_THE_WAY is triggered the bar always starts at 0%.
+        // Using remaining time (ETA − now) as total duration means the bar fills over exactly
+        // the time left — no initial jump regardless of how long it took to reach this stage.
+        flightTotalDurationMs = remainingMs.coerceAtLeast(1_000L)
+        flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
+        log.d("flightTotalDurationMs: $flightTotalDurationMs")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
             "\n   Scheduled Departure : ${attrs.scheduledDepartureTime.toHhMmSs()}" +
             "\n   Scheduled Arrival   : ${attrs.scheduledArrivalTime.toHhMmSs()}  (from attributes)" +
-            "\n   Estimated Arrival   : ${eta.toHhMmSs()}  ($etaSource)" +
+            "\n   Estimated Arrival (ETA)   : ${eta.toHhMmSs()}  ($etaSource)" +
             "\n   Now                 : ${now.toHhMmSs()}" +
             "\n   ─────────────────────────────────────" +
-            "\n   Total Duration      : ${flightTotalDurationMs.toMsReadable()}  (ETA − Departure)" +
-            "\n   Elapsed Since Dep.  : ${elapsedSinceDepartureMs.toMsReadable()}  (Now − Departure)  ← initial jump" +
-            "\n   Remaining           : ${remainingMs.toMsReadable()}  (ETA − Now)" +
+            "\n   Remaining           : ${flightTotalDurationMs.toMsReadable()}  (ETA − Now)  ← bar fills over this time" +
             "\n   ─────────────────────────────────────" +
             "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
         )
