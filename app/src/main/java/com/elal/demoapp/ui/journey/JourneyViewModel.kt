@@ -11,9 +11,8 @@ import com.elal.flightsdk.manager.LiveUpdateError
 import com.elal.flightsdk.manager.LiveUpdateManager
 import com.elal.flightsdk.manager.onFailure
 import com.elal.flightsdk.manager.onSuccess
-import com.elal.flightsdk.model.JourneyAttributes
-import com.elal.flightsdk.model.JourneyContentState
-import com.elal.flightsdk.model.JourneyStatus
+import com.elal.flightsdk.model.FlightContentState
+import com.elal.flightsdk.model.Stage
 import com.elal.flightsdk.sample.SampleFlightData
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
@@ -47,26 +46,37 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private var simulationJob: Job? = null
     private var arrivalWatchJob: Job? = null
 
+    init {
+        viewModelScope.launch {
+            LiveUpdateManager.stateFlow.collect { state ->
+                if (state == null) {
+                    stopArrivalWatch()
+                    _isActivityActive.value = false
+                    _isSimulating.value = false
+                    _statusText.value = UiText.StringResource(R.string.no_active_activity)
+                    _detailText.value = null
+                } else {
+                    _isActivityActive.value = true
+                    updateUI(state)
+                    manageArrivalWatch(state)
+                }
+            }
+        }
+    }
+
     // TODO: DEBUG - Remove before release (along with all DebugNextStageReceiver usages)
     private val isDebuggable: Boolean
         get() = (getApplication<Application>().applicationInfo.flags and
                 ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
-    fun startActivity(attributes: JourneyAttributes = SampleFlightData.journeyAttributes) {
+    fun startActivity() {
         val sequence = SampleFlightData.journeySimulationSequence
         val state = sequence[0]
         if (isDebuggable) DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
-        LiveUpdateManager.startJourney(getApplication(), attributes, state)
+        LiveUpdateManager.startJourney(getApplication(), state)
             .onSuccess {
                 _isActivityActive.value = true
                 currentStateIndex = 0
-                _statusText.value = UiText.StringResource(state.status.displayNameResId)
-                _detailText.value = UiText.StringResource(
-                    R.string.detail_start_flight,
-                    attributes.flightNumber,
-                    attributes.departureAirportCode,
-                    attributes.arrivalAirportCode
-                )
                 _errorMessage.value = null
             }
             .onFailure { _errorMessage.value = it.toDisplayMessage() }
@@ -79,8 +89,10 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         if (isDebuggable) DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
         LiveUpdateManager.updateJourney(getApplication(), state)
             .onSuccess {
-                updateUI(state)
-                manageArrivalWatch(state)
+                if (state.stage == Stage.COMPLETED) {
+                    stopArrivalWatch()
+                    _isActivityActive.value = false
+                }
                 _errorMessage.value = null
             }
             .onFailure { _errorMessage.value = it.toDisplayMessage() }
@@ -102,7 +114,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     fun simulateJourney() {
         if (_isSimulating.value) return
 
-        startActivity(SampleFlightData.journeyAttributesForSimulation)
+        startActivity()
         if (!_isActivityActive.value) return
 
         _isSimulating.value = true
@@ -116,53 +128,42 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 currentStateIndex = i
                 val state = sequence[i]
                 LiveUpdateManager.updateJourney(getApplication(), state)
-                    .onSuccess {
-                        updateUI(state)
-                        manageArrivalWatch(state)
-                    }
                     .onFailure { _errorMessage.value = it.toDisplayMessage() }
+                if (state.stage == Stage.COMPLETED) break
             }
-            delay(5_000L)
+
             endActivity()
         }
     }
 
     fun setConnectionError() {
-        val state = JourneyContentState(status = JourneyStatus.CONNECTION_ERROR)
+        val errorState = SampleFlightData.journeySimulationSequence[0].copy(stage = Stage.CONNECTION_ERROR)
         if (!_isActivityActive.value) {
-            LiveUpdateManager.startJourney(getApplication(), SampleFlightData.journeyAttributes, state)
+            LiveUpdateManager.startJourney(getApplication(), errorState)
                 .onSuccess {
                     _isActivityActive.value = true
-                    updateUI(state)
                     _errorMessage.value = null
                 }
                 .onFailure { _errorMessage.value = it.toDisplayMessage() }
         } else {
-            LiveUpdateManager.updateJourney(getApplication(), state)
-                .onSuccess {
-                    updateUI(state)
-                    _errorMessage.value = null
-                }
+            LiveUpdateManager.updateJourney(getApplication(), errorState)
+                .onSuccess { _errorMessage.value = null }
                 .onFailure { _errorMessage.value = it.toDisplayMessage() }
         }
     }
 
     fun setGeneralError() {
-        val state = JourneyContentState(status = JourneyStatus.GENERAL_ERROR)
+        val errorState = SampleFlightData.journeySimulationSequence[0].copy(stage = Stage.GENERAL_ERROR)
         if (!_isActivityActive.value) {
-            LiveUpdateManager.startJourney(getApplication(), SampleFlightData.journeyAttributes, state)
+            LiveUpdateManager.startJourney(getApplication(), errorState)
                 .onSuccess {
                     _isActivityActive.value = true
-                    updateUI(state)
                     _errorMessage.value = null
                 }
                 .onFailure { _errorMessage.value = it.toDisplayMessage() }
         } else {
-            LiveUpdateManager.updateJourney(getApplication(), state)
-                .onSuccess {
-                    updateUI(state)
-                    _errorMessage.value = null
-                }
+            LiveUpdateManager.updateJourney(getApplication(), errorState)
+                .onSuccess { _errorMessage.value = null }
                 .onFailure { _errorMessage.value = it.toDisplayMessage() }
         }
     }
@@ -175,24 +176,22 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Auto-advances to the next state (ARRIVAL) once the estimated arrival time is reached.
-     * Live progress animation is handled internally by [LiveUpdateManager].
+     * Auto-advances to LANDED once the arrival time is reached while in DEPARTED stage.
      */
-    private fun manageArrivalWatch(state: JourneyContentState) {
-        if (state.status == JourneyStatus.ON_THE_WAY) {
+    private fun manageArrivalWatch(state: FlightContentState) {
+        if (state.stage == Stage.DEPARTED) {
             startArrivalWatch(state)
         } else {
             stopArrivalWatch()
         }
     }
 
-    private fun startArrivalWatch(state: JourneyContentState) {
+    private fun startArrivalWatch(state: FlightContentState) {
         stopArrivalWatch()
-        val eta = state.estimatedArrivalTime ?: return
         arrivalWatchJob = viewModelScope.launch {
             while (isActive) {
                 delay(ARRIVAL_CHECK_INTERVAL_MS)
-                if (Instant.now() >= eta) {
+                if (Instant.now() >= state.arrivalTime) {
                     updateToNextState()
                     break
                 }
@@ -205,24 +204,28 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         arrivalWatchJob = null
     }
 
-    private fun updateUI(state: JourneyContentState) {
-        val attributes = SampleFlightData.journeyAttributes
-        _statusText.value = UiText.StringResource(state.status.displayNameResId)
-        _detailText.value = when (state.status) {
-            JourneyStatus.CHECK_IN         -> UiText.StringResource(R.string.detail_check_in, state.checkInDesk.orDash())
-            JourneyStatus.BOARDING_SOON    -> UiText.StringResource(R.string.detail_boarding_soon, state.gate.orDash())
-            JourneyStatus.BOARDING_DELAYED -> UiText.StringResource(R.string.detail_boarding_delayed, state.gate.orDash())
-            JourneyStatus.BOARDING         -> UiText.StringResource(R.string.detail_boarding, state.boardingZone.orDash())
-            JourneyStatus.LAST_CALL        -> UiText.StringResource(R.string.detail_last_call, state.gate.orDash())
-            JourneyStatus.TAKING_OFF       -> UiText.StringResource(R.string.detail_taking_off, state.takeoffTime.toFormattedTime())
-            JourneyStatus.ON_THE_WAY       -> UiText.StringResource(R.string.detail_on_the_way, state.estimatedArrivalTime.toFormattedTime())
-            JourneyStatus.ARRIVAL          ->
-                if (attributes.arrivalAirportCode == "TLV")
-                    UiText.StringResource(R.string.detail_arrival_baggage, state.terminal.orDash())
-                else
-                    UiText.StringResource(R.string.detail_arrival_welcome, attributes.arrivalCity)
-            JourneyStatus.CONNECTION_ERROR -> UiText.StringResource(R.string.detail_connection_error)
-            JourneyStatus.GENERAL_ERROR    -> UiText.StringResource(R.string.detail_general_error)
+    private fun updateUI(state: FlightContentState) {
+        _statusText.value = when (state.stage) {
+            Stage.CHECK_IN         -> UiText.StringResource(R.string.status_check_in)
+            Stage.GATE_READY       -> UiText.StringResource(R.string.status_gate_ready)
+            Stage.BOARDING         -> UiText.StringResource(R.string.status_boarding)
+            Stage.DEPARTED         -> UiText.StringResource(R.string.status_departed)
+            Stage.LANDED           -> UiText.StringResource(R.string.status_landed)
+            Stage.BAGGAGE          -> UiText.StringResource(R.string.status_baggage)
+            Stage.COMPLETED        -> UiText.StringResource(R.string.status_completed)
+            Stage.CONNECTION_ERROR -> UiText.StringResource(R.string.status_connection_error)
+            Stage.GENERAL_ERROR    -> UiText.StringResource(R.string.status_general_error)
+        }
+        _detailText.value = when (state.stage) {
+            Stage.CHECK_IN    -> UiText.StringResource(R.string.detail_check_in, state.checkInCounters.orDash())
+            Stage.GATE_READY  -> UiText.StringResource(R.string.detail_gate_ready, state.gate.orDash())
+            Stage.BOARDING    -> UiText.StringResource(R.string.detail_boarding, state.gate.orDash())
+            Stage.DEPARTED    -> UiText.StringResource(R.string.detail_departed, state.arrivalTime.toFormattedTime())
+            Stage.LANDED      -> UiText.StringResource(R.string.detail_landed, state.destination)
+            Stage.BAGGAGE     -> UiText.StringResource(R.string.detail_baggage, state.baggageCarousel.orDash())
+            Stage.COMPLETED   -> null
+            Stage.CONNECTION_ERROR -> UiText.StringResource(R.string.detail_connection_error)
+            Stage.GENERAL_ERROR    -> UiText.StringResource(R.string.detail_general_error)
         }
     }
 

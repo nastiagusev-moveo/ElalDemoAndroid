@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- JourneyStatus display names -->
+    <!-- Stage display names -->
     <string name="status_check_in">Check In</string>
-    <string name="status_boarding_soon">Boarding Soon</string>
-    <string name="status_boarding_delayed">Boarding Delayed</string>
+    <string name="status_gate_ready">Gate Ready</string>
     <string name="status_boarding">Boarding</string>
-    <string name="status_last_call">Last Call</string>
-    <string name="status_taking_off">Taking Off</string>
-    <string name="status_on_the_way">On The Way</string>
-    <string name="status_arrival">Arrival</string>
+    <string name="status_departed">Departed</string>
+    <string name="status_landed">Landed</string>
+    <string name="status_baggage">Baggage Claim</string>
+    <string name="status_completed">Completed</string>
     <string name="status_connection_error">Connection Error</string>
     <string name="status_general_error">General Error</string>
 
@@ -18,12 +17,9 @@
 
     <!-- Notification content text (format strings) -->
     <string name="notif_content_check_in">Check-in desks: %s</string>
-    <string name="notif_content_boarding_soon">Gate: %s</string>
-    <string name="notif_content_boarding_delayed">Delayed, Gate: %s</string>
-    <string name="notif_content_boarding">Your zone: %s</string>
-    <string name="notif_content_last_call">No boarding after the gate closes: %s</string>
-    <string name="notif_content_taking_off">Taking off at %s</string>
-    <string name="notif_content_on_the_way">Landing at %s</string>
+    <string name="notif_content_gate_ready">Gate: %s</string>
+    <string name="notif_content_boarding">Gate: %s</string>
+    <string name="notif_content_departed">Landing at %s</string>
     <string name="notif_content_arrival_baggage">Baggage claim will be at carousel: %s</string>
     <string name="notif_content_arrival_welcome">Welcome to %s</string>
     <string name="notif_content_connection_error">You seem to be offline. Check your connection.</string>
@@ -32,7 +28,6 @@
     <!-- Notification chip text -->
     <string name="notif_chip_check_in">Check-in</string>
     <string name="notif_chip_boarding">Boarding</string>
-    <string name="notif_chip_taking_off">Please take a seat</string>
     <string name="notif_chip_on_the_way">En route</string>
     <string name="notif_chip_arrival">Arrival</string>
     <string name="notif_chip_connection_error">Offline</string>
@@ -40,13 +35,12 @@
 
     <!-- Notification status bar trailing labels -->
     <string name="notif_statusbar_check_in">Baggage drop</string>
-    <string name="notif_statusbar_boarding_soon">Boarding Soon</string>
-    <string name="notif_statusbar_boarding_delayed">Boarding Delayed</string>
+    <string name="notif_statusbar_gate_ready">Gate Ready</string>
     <string name="notif_statusbar_boarding">Boarding</string>
-    <string name="notif_statusbar_last_call">Last Call</string>
-    <string name="notif_statusbar_taking_off">Taking Off</string>
-    <string name="notif_statusbar_on_the_way">On The Way</string>
-    <string name="notif_statusbar_arrival">Arrival</string>
+    <string name="notif_statusbar_departed">On The Way</string>
+    <string name="notif_statusbar_landed">Landed</string>
+    <string name="notif_statusbar_baggage">Baggage Claim</string>
+    <string name="notif_statusbar_completed">Completed</string>
     <string name="notif_statusbar_connection_error">Connection Error</string>
     <string name="notif_statusbar_general_error">Error</string>
 </resources>

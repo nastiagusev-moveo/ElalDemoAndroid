@@ -11,9 +11,12 @@ import androidx.core.app.NotificationCompat.ProgressStyle
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.text.BidiFormatter
 import com.elal.flightsdk.R
-import com.elal.flightsdk.model.JourneyAttributes
-import com.elal.flightsdk.model.JourneyContentState
-import com.elal.flightsdk.model.JourneyStatus
+import com.elal.flightsdk.model.Direction
+import com.elal.flightsdk.model.FlightContentState
+import com.elal.flightsdk.model.Stage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import com.elal.flightsdk.utils.Logger
@@ -49,23 +52,25 @@ object LiveUpdateManager {
 
     var uiDebugMode: Boolean = false
 
-    private var currentAttributes: JourneyAttributes? = null
-    val isActive: Boolean get() = currentAttributes != null
+    private val _stateFlow = MutableStateFlow<FlightContentState?>(null)
+    val stateFlow: StateFlow<FlightContentState?> = _stateFlow.asStateFlow()
+
+    private var currentState: FlightContentState? = null
+    val isActive: Boolean get() = currentState != null
     private var flightStartRealtimeMs: Long = 0L
     private var flightTotalDurationMs: Long = 0L
     private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
-    private var selfUpdateState: JourneyContentState? = null
+    private var selfUpdateState: FlightContentState? = null
     private val selfUpdateRunnable: Runnable = object : Runnable {
         override fun run() {
             val ctx = appContext ?: return
-            val attrs = currentAttributes ?: return
             val state = selfUpdateState ?: return
             val progress = computeFlightProgress()
             val elapsedMs = android.os.SystemClock.elapsedRealtime() - flightStartRealtimeMs
             val nextTickMs = calculateNextTickInterval()
             log.d("✈️ FLIGHT PROGRESS: ${(progress * 100).toInt()}% Complete | Elapsed: ${elapsedMs.toMmSs()} / ${flightTotalDurationMs.toMmSs()} | Next update in ${nextTickMs / 1000}s")
-            postNotification(ctx, attrs, state, isSelfUpdate = true)
+            postNotification(ctx, state, isSelfUpdate = true)
             if (progress >= 1.0) {
                 log.i("🏁 FLIGHT COMPLETE: Progress reached 100% — stopping updates")
                 stopSelfUpdate()
@@ -92,49 +97,56 @@ object LiveUpdateManager {
         }
     }
 
-    fun startJourney(context: Context, attributes: JourneyAttributes, initialState: JourneyContentState): EmptyResult<LiveUpdateError> {
+    fun startJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
         if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
-        log.i("startJourney: flight=${attributes.flightNumber} status=${initialState.status}")
+        log.i("startJourney: flight=${state.flightNumber} stage=${state.stage}")
         appContext = context.applicationContext
         ensureChannel(context)
-        currentAttributes = attributes
+        currentState = state
+        _stateFlow.value = state
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
-        postNotification(context, attributes, initialState)
+        postNotification(context, state)
         return Result.Success(Unit)
     }
 
-    fun updateJourney(context: Context, state: JourneyContentState): EmptyResult<LiveUpdateError> {
-        val attrs = currentAttributes ?: return Result.Failure(LiveUpdateError.NoActiveActivity())
-        log.d("updateJourney: status=${state.status}")
+    fun updateJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
+        if (currentState == null) return Result.Failure(LiveUpdateError.NoActiveActivity())
+        log.d("updateJourney: stage=${state.stage}")
 
-        saveStateToPrefs(context, attrs, state)
+        currentState = state
+        saveStateToPrefs(context, state)
 
         val serviceIntent = android.content.Intent(context, OnTheWayService::class.java)
 
-        if (state.status == JourneyStatus.ON_THE_WAY) {
+        if (state.stage == Stage.COMPLETED) {
+            endJourney(context)  // emits null to stateFlow
+            return Result.Success(Unit)
+        }
+
+        _stateFlow.value = state
+
+        if (state.stage == Stage.DEPARTED) {
             if (selfUpdateState == null) {
-                setupRealtimeClocks(attrs, state)
+                setupRealtimeClocks(state)
                 startSelfUpdate(state)
                 androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
             } else {
-                // Re-anchor in case FCM pushed an updated ETA mid-flight
                 selfUpdateState = state
-                setupRealtimeClocks(attrs, state)
+                setupRealtimeClocks(state)
             }
         } else {
             stopSelfUpdate()
             flightStartRealtimeMs = 0L
             flightTotalDurationMs = 0L
-            // ARRIVAL: keep the service alive so Android doesn't tear down the foreground
-            // notification before postNotification() replaces it — killing it here causes a
-            // dismiss/reopen flicker. endJourney() handles the cleanup a few seconds later.
-            if (state.status != JourneyStatus.ARRIVAL) {
+            // LANDED: keep the service alive so Android doesn't tear down the foreground
+            // notification before postNotification() replaces it.
+            if (state.stage != Stage.LANDED && state.stage != Stage.BAGGAGE) {
                 context.stopService(serviceIntent)
             }
         }
 
-        postNotification(context, attrs, state)
+        postNotification(context, state)
         return Result.Success(Unit)
     }
 
@@ -144,13 +156,14 @@ object LiveUpdateManager {
         context.stopService(android.content.Intent(context, OnTheWayService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE).edit().clear().apply()
-        currentAttributes = null
+        currentState = null
+        _stateFlow.value = null
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
         appContext = null
     }
 
-    private fun startSelfUpdate(state: JourneyContentState) {
+    private fun startSelfUpdate(state: FlightContentState) {
         selfUpdateState = state
         handler.removeCallbacks(selfUpdateRunnable)
         val tickMs = calculateNextTickInterval()
@@ -176,14 +189,13 @@ object LiveUpdateManager {
 
     private fun buildNotification(
         context: Context,
-        attributes: JourneyAttributes,
-        state: JourneyContentState,
+        state: FlightContentState,
         isSelfUpdate: Boolean = false
     ): android.app.Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(chipIconFor(state.status))
-            .setContentTitle(buildStatusBarText(context, attributes, state))
-            .setContentText(buildContentText(context, attributes, state))
+            .setSmallIcon(chipIconFor(state.stage))
+            .setContentTitle(buildStatusBarText(context, state))
+            .setContentText(buildContentText(context, state))
             .setStyle(buildProgressStyle(context, state))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
@@ -192,8 +204,8 @@ object LiveUpdateManager {
             .setShowWhen(false)
             .setOnlyAlertOnce(
                 isSelfUpdate ||
-                state.status == JourneyStatus.CONNECTION_ERROR ||
-                state.status == JourneyStatus.GENERAL_ERROR
+                state.stage == Stage.CONNECTION_ERROR ||
+                state.stage == Stage.GENERAL_ERROR
             )
         // TODO: for DEBUG only
         debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
@@ -202,39 +214,34 @@ object LiveUpdateManager {
 
     private fun postNotification(
         context: Context,
-        attributes: JourneyAttributes,
-        state: JourneyContentState,
+        state: FlightContentState,
         isSelfUpdate: Boolean = false
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        nm.notify(NOTIFICATION_ID, buildNotification(context, attributes, state, isSelfUpdate))
+        nm.notify(NOTIFICATION_ID, buildNotification(context, state, isSelfUpdate))
     }
 
     fun buildCurrentNotification(context: Context): android.app.Notification? {
-        val attrs = currentAttributes ?: return null
         val state = selfUpdateState ?: return null
-        return buildNotification(context, attrs, state, isSelfUpdate = true)
+        return buildNotification(context, state, isSelfUpdate = true)
     }
 
-    private fun saveStateToPrefs(context: Context, attrs: JourneyAttributes, state: JourneyContentState) {
+    private fun saveStateToPrefs(context: Context, state: FlightContentState) {
         val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
         prefs.edit()
-            .putString("attrs", jsonFormat.encodeToString(attrs))
             .putString("state", jsonFormat.encodeToString(state))
             .apply()
     }
 
     fun restoreFromPrefs(context: Context) {
         val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
-        val attrsJson = prefs.getString("attrs", null)
-        val stateJson = prefs.getString("state", null)
-        if (attrsJson == null || stateJson == null) return
+        val stateJson = prefs.getString("state", null) ?: return
         try {
-            val attrs = jsonFormat.decodeFromString<JourneyAttributes>(attrsJson)
-            val state = jsonFormat.decodeFromString<JourneyContentState>(stateJson)
-            currentAttributes = attrs
+            val state = jsonFormat.decodeFromString<FlightContentState>(stateJson)
+            currentState = state
+            _stateFlow.value = state
             appContext = context.applicationContext
-            setupRealtimeClocks(attrs, state)
+            setupRealtimeClocks(state)
             startSelfUpdate(state)
         } catch (e: Exception) {
             log.e("restoreFromPrefs: corrupt prefs, clearing — ${e.message}", e)
@@ -246,21 +253,15 @@ object LiveUpdateManager {
      * Segment layout — always exactly 3 segments, never changes:
      *  seg0 (short) + seg1 (short) + seg2 (long / flight path)
      *
-     * All segments are set to blue; styledByProgress(true) lets the framework
-     * color everything before the progress point in the segment's color (blue)
-     * and everything after in its default unfilled style (grey).
-     * This avoids splitting the flight segment into sub-segments, which would
-     * introduce visible inter-segment gaps and cause layout jumps.
-     *
      * Step 1 – CHECK_IN:                   progress=0        → all grey,     no tracker
-     * Step 2 – BOARDING_SOON … LAST_CALL:  progress=seg0     → seg0 blue,   no tracker
-     * Step 3 – TAKING_OFF:                 progress=seg0+1   → seg0+1 blue, airplane at start
-     * Step 4 – ON_THE_WAY:                 progress grows    → blue trail,  airplane moves
-     * Step 5 – ARRIVAL:                    progress=max      → all blue,    landing icon
+     * Step 2 – GATE_READY, BOARDING:       progress=seg0     → seg0 blue,   no tracker
+     * Step 3 – DEPARTED (start):           progress=seg0+1   → seg0+1 blue, airplane at start
+     * Step 4 – DEPARTED (in-flight):       progress grows    → blue trail,  airplane moves
+     * Step 5 – LANDED, BAGGAGE:            progress=max      → all blue,    landing icon
      */
     private fun buildProgressStyle(
         context: Context,
-        state: JourneyContentState
+        state: FlightContentState
     ): ProgressStyle {
         val shortSegLen  = PROGRESS_MAX / 5                      // 48
         val seg0Len      = shortSegLen - SEG0_COMPENSATION       // 38
@@ -268,14 +269,13 @@ object LiveUpdateManager {
         val flightStart  = seg0Len + seg1Len + 2                    // 88
         val longSegLen   = PROGRESS_MAX - flightStart            // 154
 
-        val progressIndex = when (state.status) {
-            JourneyStatus.CONNECTION_ERROR, JourneyStatus.GENERAL_ERROR  -> -1
-            JourneyStatus.CHECK_IN                                       ->  0
-            JourneyStatus.BOARDING_SOON, JourneyStatus.BOARDING_DELAYED,
-            JourneyStatus.BOARDING, JourneyStatus.LAST_CALL              ->  1
-            JourneyStatus.TAKING_OFF                                     ->  2
-            JourneyStatus.ON_THE_WAY                                     ->  3
-            JourneyStatus.ARRIVAL                                        ->  4
+        val progressIndex = when (state.stage) {
+            Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR -> -1
+            Stage.CHECK_IN                              ->  0
+            Stage.GATE_READY, Stage.BOARDING            ->  1
+            Stage.DEPARTED                              ->  2
+            Stage.LANDED, Stage.BAGGAGE                 ->  4
+            Stage.COMPLETED                             ->  4
         }
 
         val segments = listOf(
@@ -285,15 +285,15 @@ object LiveUpdateManager {
         )
 
         val progress: Int = when {
-            state.status == JourneyStatus.ON_THE_WAY -> {
+            state.stage == Stage.DEPARTED -> {
                 val flightProgress = computeFlightProgress()
                 val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen - 1)
                 if (uiDebugMode) log.d("[AIRPLANE] fill=$filled / $longSegLen | progressBar=${flightStart + filled} / $PROGRESS_MAX")
                 flightStart + filled
             }
-            progressIndex >= 4 -> PROGRESS_MAX      // ARRIVAL — end of bar
-            progressIndex >= 2 -> flightStart       // TAKING_OFF — start of flight path
-            progressIndex >= 1 -> seg0Len           // BOARDING states — end of seg0
+            progressIndex >= 4 -> PROGRESS_MAX      // LANDED/BAGGAGE — end of bar
+            progressIndex >= 2 -> flightStart       // DEPARTED start — start of flight path
+            progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING — end of seg0
             else               -> 0                 // CHECK_IN / errors
         }
 
@@ -302,35 +302,29 @@ object LiveUpdateManager {
             .setProgress(progress)
             .setStyledByProgress(true)
 
-        val trackerIcon = when (state.status) {
-            JourneyStatus.TAKING_OFF -> R.drawable.ic_airplane_taking_off_left_2
-            JourneyStatus.ON_THE_WAY -> R.drawable.ic_airplane_move_left_2
-            JourneyStatus.ARRIVAL    -> R.drawable.ic_airplane_land_left_2
-            else                     -> R.drawable.ic_airplane_placeholder_transparent // to avoid Android re-measures and layout jumps
+        val trackerIcon = when (state.stage) {
+            Stage.DEPARTED -> R.drawable.ic_airplane_move_left_2
+            Stage.LANDED,
+            Stage.BAGGAGE  -> R.drawable.ic_airplane_land_left_2
+            else           -> R.drawable.ic_airplane_placeholder_transparent
         }
         style.setProgressTrackerIcon(IconCompat.createWithResource(context, trackerIcon))
 
         return style
     }
 
-    private fun setupRealtimeClocks(attrs: JourneyAttributes, state: JourneyContentState) {
-        val eta = state.estimatedArrivalTime ?: attrs.scheduledArrivalTime
-        val etaSource = if (state.estimatedArrivalTime != null) "state.estimatedArrivalTime" else "attrs.scheduledArrivalTime (fallback)"
+    private fun setupRealtimeClocks(state: FlightContentState) {
         val now = java.time.Instant.now()
-        val remainingMs = eta.toEpochMilli() - now.toEpochMilli()
+        val remainingMs = state.arrivalTime.toEpochMilli() - now.toEpochMilli()
         log.d("(Arrival - now) => remainingMs: $remainingMs")
 
-        // When ON_THE_WAY is triggered the bar always starts at 0%.
-        // Using remaining time (ETA − now) as total duration means the bar fills over exactly
-        // the time left — no initial jump regardless of how long it took to reach this stage.
         flightTotalDurationMs = remainingMs.coerceAtLeast(1_000L)
         flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
         log.d("flightTotalDurationMs: $flightTotalDurationMs")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
-            "\n   Scheduled Departure : ${attrs.scheduledDepartureTime.toHhMmSs()}" +
-            "\n   Scheduled Arrival   : ${attrs.scheduledArrivalTime.toHhMmSs()}  (from attributes)" +
-            "\n   Estimated Arrival (ETA)   : ${eta.toHhMmSs()}  ($etaSource)" +
+            "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
+            "\n   Arrival (ETA)       : ${state.arrivalTime.toHhMmSs()}" +
             "\n   Now                 : ${now.toHhMmSs()}" +
             "\n   ─────────────────────────────────────" +
             "\n   Remaining           : ${flightTotalDurationMs.toMsReadable()}  (ETA − Now)  ← bar fills over this time" +
@@ -351,68 +345,62 @@ object LiveUpdateManager {
         return (elapsed.toDouble() / flightTotalDurationMs).coerceIn(0.0, 1.0)
     }
 
-    private fun buildContentText(context: Context, attributes: JourneyAttributes, state: JourneyContentState): String {
+    private fun buildContentText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
-        return when (state.status) {
-            JourneyStatus.CHECK_IN         -> context.getString(R.string.notif_content_check_in, bidi.unicodeWrap(state.checkInDesk.orDash()))
-            JourneyStatus.BOARDING_SOON    -> context.getString(R.string.notif_content_boarding_soon, bidi.unicodeWrap(state.gate.orDash()))
-            JourneyStatus.BOARDING_DELAYED -> context.getString(R.string.notif_content_boarding_delayed, bidi.unicodeWrap(state.gate.orDash()))
-            JourneyStatus.BOARDING         -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.boardingZone.orDash()))
-            JourneyStatus.LAST_CALL        -> context.getString(R.string.notif_content_last_call, bidi.unicodeWrap(state.gate.orDash()))
-            JourneyStatus.TAKING_OFF       -> context.getString(R.string.notif_content_taking_off, bidi.unicodeWrap(state.takeoffTime.toFormattedTime()))
-            JourneyStatus.ON_THE_WAY       -> context.getString(R.string.notif_content_on_the_way, bidi.unicodeWrap(state.estimatedArrivalTime.toFormattedTime()))
-            JourneyStatus.ARRIVAL          ->
-                if (attributes.arrivalAirportCode == "TLV")
+        return when (state.stage) {
+            Stage.CHECK_IN    -> context.getString(R.string.notif_content_check_in, bidi.unicodeWrap(state.checkInCounters.orDash()))
+            Stage.GATE_READY  -> context.getString(R.string.notif_content_gate_ready, bidi.unicodeWrap(state.gate.orDash()))
+            Stage.BOARDING    -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.gate.orDash()))
+            Stage.DEPARTED    -> context.getString(R.string.notif_content_departed, bidi.unicodeWrap(state.arrivalTime.toFormattedTime()))
+            Stage.LANDED      ->
+                if (state.direction == Direction.ARRIVAL)
                     context.getString(R.string.notif_content_arrival_baggage, bidi.unicodeWrap(state.terminal.orDash()))
                 else
-                    context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(attributes.arrivalCity))
-            JourneyStatus.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
-            JourneyStatus.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
+                    context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
+            Stage.BAGGAGE     -> context.getString(R.string.notif_content_arrival_baggage, bidi.unicodeWrap(state.baggageCarousel.orDash()))
+            Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
+            Stage.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
+            Stage.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
         }
     }
 
-    private fun chipIconFor(status: JourneyStatus): Int = when (status) {
-        JourneyStatus.CHECK_IN         -> R.drawable.ic_chip_checkin
-        JourneyStatus.BOARDING_SOON,
-        JourneyStatus.BOARDING_DELAYED,
-        JourneyStatus.BOARDING,
-        JourneyStatus.LAST_CALL        -> R.drawable.ic_chip_boarding
-        JourneyStatus.TAKING_OFF       -> R.drawable.ic_chip_takeoff
-        JourneyStatus.ON_THE_WAY       -> R.drawable.ic_chip_ontheway
-        JourneyStatus.ARRIVAL          -> R.drawable.ic_chip_arrival
-        JourneyStatus.CONNECTION_ERROR,
-        JourneyStatus.GENERAL_ERROR    -> R.drawable.ic_chip_error
+    private fun chipIconFor(stage: Stage): Int = when (stage) {
+        Stage.CHECK_IN                   -> R.drawable.ic_chip_checkin
+        Stage.GATE_READY, Stage.BOARDING -> R.drawable.ic_chip_boarding
+        Stage.DEPARTED                   -> R.drawable.ic_chip_ontheway
+        Stage.LANDED, Stage.BAGGAGE,
+        Stage.COMPLETED                  -> R.drawable.ic_chip_arrival
+        Stage.CONNECTION_ERROR,
+        Stage.GENERAL_ERROR              -> R.drawable.ic_chip_error
     }
 
-    private fun buildChipText(context: Context, state: JourneyContentState): String = when (state.status) {
-        JourneyStatus.CHECK_IN         -> state.checkInDesk ?: context.getString(R.string.notif_chip_check_in)
-        JourneyStatus.BOARDING_SOON,
-        JourneyStatus.BOARDING_DELAYED,
-        JourneyStatus.BOARDING,
-        JourneyStatus.LAST_CALL        -> state.gate ?: context.getString(R.string.notif_chip_boarding)
-        JourneyStatus.TAKING_OFF       -> context.getString(R.string.notif_chip_taking_off)
-        JourneyStatus.ON_THE_WAY       -> context.getString(R.string.notif_chip_on_the_way)
-        JourneyStatus.ARRIVAL          -> context.getString(R.string.notif_chip_arrival)
-        JourneyStatus.CONNECTION_ERROR -> context.getString(R.string.notif_chip_connection_error)
-        JourneyStatus.GENERAL_ERROR    -> context.getString(R.string.notif_chip_general_error)
+    private fun buildChipText(context: Context, state: FlightContentState): String = when (state.stage) {
+        Stage.CHECK_IN    -> state.checkInCounters ?: context.getString(R.string.notif_chip_check_in)
+        Stage.GATE_READY,
+        Stage.BOARDING    -> state.gate ?: context.getString(R.string.notif_chip_boarding)
+        Stage.DEPARTED    -> context.getString(R.string.notif_chip_on_the_way)
+        Stage.LANDED,
+        Stage.BAGGAGE,
+        Stage.COMPLETED   -> context.getString(R.string.notif_chip_arrival)
+        Stage.CONNECTION_ERROR -> context.getString(R.string.notif_chip_connection_error)
+        Stage.GENERAL_ERROR    -> context.getString(R.string.notif_chip_general_error)
     }
 
-    private fun buildStatusBarText(context: Context, attributes: JourneyAttributes, state: JourneyContentState): String {
+    private fun buildStatusBarText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
-        val depTime = attributes.scheduledDepartureTime.toFormattedTime()
-        val arrTime = (state.estimatedArrivalTime ?: attributes.scheduledArrivalTime).toFormattedTime()
-        val flightNumber = bidi.unicodeWrap(attributes.flightNumber)
-        return when (state.status) {
-            JourneyStatus.CHECK_IN         -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_check_in)}"
-            JourneyStatus.BOARDING_SOON    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding_soon)}"
-            JourneyStatus.BOARDING_DELAYED -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding_delayed)}"
-            JourneyStatus.BOARDING         -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding)}"
-            JourneyStatus.LAST_CALL        -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_last_call)}"
-            JourneyStatus.TAKING_OFF       -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_taking_off)}"
-            JourneyStatus.ON_THE_WAY       -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_on_the_way)}"
-            JourneyStatus.ARRIVAL          -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_arrival)}"
-            JourneyStatus.CONNECTION_ERROR -> context.getString(R.string.notif_statusbar_connection_error)
-            JourneyStatus.GENERAL_ERROR    -> context.getString(R.string.notif_statusbar_general_error)
+        val depTime = state.departureTime.toFormattedTime()
+        val arrTime = state.arrivalTime.toFormattedTime()
+        val flightNumber = bidi.unicodeWrap(state.flightNumber)
+        return when (state.stage) {
+            Stage.CHECK_IN    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_check_in)}"
+            Stage.GATE_READY  -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_gate_ready)}"
+            Stage.BOARDING    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding)}"
+            Stage.DEPARTED    -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_departed)}"
+            Stage.LANDED      -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_landed)}"
+            Stage.BAGGAGE     -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_baggage)}"
+            Stage.COMPLETED   -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_completed)}"
+            Stage.CONNECTION_ERROR -> context.getString(R.string.notif_statusbar_connection_error)
+            Stage.GENERAL_ERROR    -> context.getString(R.string.notif_statusbar_general_error)
         }
     }
 }

@@ -10,21 +10,28 @@
     <string name="simulate_journey">Simulate Journey</string>
     <string name="simulating">Simulating journey…</string>
 
+    <!-- Stage display names (for Compose UI) -->
+    <string name="status_check_in">Check In</string>
+    <string name="status_gate_ready">Gate Ready</string>
+    <string name="status_boarding">Boarding</string>
+    <string name="status_departed">Departed</string>
+    <string name="status_landed">Landed</string>
+    <string name="status_baggage">Baggage Claim</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_connection_error">Connection Error</string>
+    <string name="status_general_error">General Error</string>
+
     <!-- Button labels -->
     <string name="conn_error_button">Conn. Error</string>
     <string name="error_button">Error</string>
 
-    <!-- Detail texts (format strings) — LTR arrow, departure→arrival -->
-    <string name="detail_start_flight">Flight %1$s · %2$s → %3$s</string>
+    <!-- Detail texts (format strings) -->
     <string name="detail_check_in">Check-in desks: %s</string>
-    <string name="detail_boarding_soon">Gate: %s</string>
-    <string name="detail_boarding_delayed">Delayed, Gate: %s</string>
-    <string name="detail_boarding">Your zone: %s</string>
-    <string name="detail_last_call">No boarding after the gate closes: %s</string>
-    <string name="detail_taking_off">Taking off at %s</string>
-    <string name="detail_on_the_way">Landing at %s</string>
-    <string name="detail_arrival_baggage">Baggage claim will be at carousel: %s</string>
-    <string name="detail_arrival_welcome">Welcome to %s</string>
+    <string name="detail_gate_ready">Gate: %s</string>
+    <string name="detail_boarding">Gate: %s</string>
+    <string name="detail_departed">Landing at %s</string>
+    <string name="detail_landed">Welcome to %s</string>
+    <string name="detail_baggage">Baggage claim at carousel: %s</string>
     <string name="detail_connection_error">You seem to be offline. Check your connection.</string>
     <string name="detail_general_error">Error has occurred</string>
 
