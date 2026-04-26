@@ -43,6 +43,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     val errorMessage: StateFlow<UiText?> = _errorMessage.asStateFlow()
 
     private var currentStateIndex = 0
+    private var activeSequence: List<FlightContentState> = SampleFlightData.journeySimulationSequence
     private var simulationJob: Job? = null
     private var arrivalWatchJob: Job? = null
 
@@ -70,8 +71,8 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     fun startActivity() {
-        val sequence = SampleFlightData.journeySimulationSequence
-        val state = sequence[0]
+        activeSequence = SampleFlightData.journeySimulationSequence
+        val state = activeSequence[0]
         if (isDebuggable) DebugNextStageReceiver.setup(getApplication()) // TODO: DEBUG - Remove before release
         LiveUpdateManager.startJourney(getApplication(), state)
             .onSuccess {
@@ -83,7 +84,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateToNextState() {
-        val sequence = SampleFlightData.journeySimulationSequence
+        val sequence = activeSequence
         currentStateIndex = (currentStateIndex + 1).coerceAtMost(sequence.size - 1)
         val state = sequence[currentStateIndex]
         if (isDebuggable) DebugNextStageReceiver.syncIndex(currentStateIndex) // TODO: DEBUG - Remove before release
@@ -114,13 +115,46 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     fun simulateJourney() {
         if (_isSimulating.value) return
 
+        activeSequence = SampleFlightData.journeySimulationSequence
         startActivity()
         if (!_isActivityActive.value) return
 
         _isSimulating.value = true
         currentStateIndex = 0
 
-        val sequence = SampleFlightData.journeySimulationSequence
+        val sequence = activeSequence
+
+        simulationJob = viewModelScope.launch {
+            for (i in 1 until sequence.size) {
+                delay(5_000L)
+                currentStateIndex = i
+                val state = sequence[i]
+                LiveUpdateManager.updateJourney(getApplication(), state)
+                    .onFailure { _errorMessage.value = it.toDisplayMessage() }
+                if (state.stage == Stage.COMPLETED) break
+            }
+
+            endActivity()
+        }
+    }
+
+    fun simulateArrivalJourney() {
+        if (_isSimulating.value) return
+
+        activeSequence = SampleFlightData.arrivalSimulationSequence
+        val sequence = activeSequence
+
+        LiveUpdateManager.startJourney(getApplication(), sequence[0])
+            .onSuccess {
+                _isActivityActive.value = true
+                currentStateIndex = 0
+                _errorMessage.value = null
+            }
+            .onFailure { _errorMessage.value = it.toDisplayMessage() }
+
+        if (!_isActivityActive.value) return
+
+        _isSimulating.value = true
 
         simulationJob = viewModelScope.launch {
             for (i in 1 until sequence.size) {

@@ -31,6 +31,8 @@ data class FlightContentState(
     val baggageCarousel: String? = null,
     val stage: Stage,
     val checkInCounters: String? = null,
+    val progressFraction: Double = 0.0,
+    val flightStatus: String? = null,
     val message: String = "",
     val language: String = "EN"
 )

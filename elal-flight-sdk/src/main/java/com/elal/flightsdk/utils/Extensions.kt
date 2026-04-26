@@ -2,13 +2,18 @@ package com.elal.flightsdk.utils
 
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 fun String?.orDash(): String = this ?: "--"
 
 fun Instant?.toFormattedTime(): String {
     if (this == null) return "--"
     val local = atZone(ZoneId.systemDefault())
-    return "%d:%02d".format(local.hour, local.minute)
+    return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+        .withLocale(Locale.getDefault())
+        .format(local)
 }
 
 fun Instant.toHhMmSs(): String {

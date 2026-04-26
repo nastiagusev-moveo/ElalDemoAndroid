@@ -43,7 +43,8 @@ fun JourneyDemoScreen(viewModel: JourneyViewModel = viewModel()) {
         onEndActivity = { viewModel.endActivity() },
         onConnectionError = { viewModel.setConnectionError() },
         onGeneralError = { viewModel.setGeneralError() },
-        onSimulateJourney = { viewModel.simulateJourney() }
+        onSimulateDeparture = { viewModel.simulateJourney() },
+        onSimulateArrival = { viewModel.simulateArrivalJourney() }
     )
 }
 
@@ -60,7 +61,8 @@ fun JourneyDemoContent(
     onEndActivity: () -> Unit,
     onConnectionError: () -> Unit,
     onGeneralError: () -> Unit,
-    onSimulateJourney: () -> Unit
+    onSimulateDeparture: () -> Unit,
+    onSimulateArrival: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -165,20 +167,37 @@ fun JourneyDemoContent(
 
             HorizontalDivider()
 
-            // Simulate Button
-            Button(
-                onClick = onSimulateJourney,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = !isSimulating,
-                colors = ButtonDefaults.buttonColors(containerColor = ElAlBlue)
-            ) {
-                Text(
-                    text = stringResource(R.string.simulate_journey),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+            // Simulate Buttons
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onSimulateDeparture,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    enabled = !isSimulating,
+                    colors = ButtonDefaults.buttonColors(containerColor = ElAlBlue)
+                ) {
+                    Text(
+                        text = stringResource(R.string.simulate_journey_departure),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Button(
+                    onClick = onSimulateArrival,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    enabled = !isSimulating,
+                    colors = ButtonDefaults.buttonColors(containerColor = ElAlBlue)
+                ) {
+                    Text(
+                        text = stringResource(R.string.simulate_journey_arrival),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             // CircularProgressIndicator — shown while simulation is running
@@ -227,7 +246,8 @@ fun JourneyDemoContentIdlePreview() {
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
-            onSimulateJourney = {}
+            onSimulateDeparture = {},
+            onSimulateArrival = {}
         )
     }
 }
@@ -247,7 +267,8 @@ fun JourneyDemoContentBoardingPreview() {
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
-            onSimulateJourney = {}
+            onSimulateDeparture = {},
+            onSimulateArrival = {}
         )
     }
 }
@@ -267,7 +288,8 @@ fun JourneyDemoContentSimulatingPreview() {
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
-            onSimulateJourney = {}
+            onSimulateDeparture = {},
+            onSimulateArrival = {}
         )
     }
 }
@@ -287,7 +309,8 @@ fun JourneyDemoContentErrorPreview() {
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
-            onSimulateJourney = {}
+            onSimulateDeparture = {},
+            onSimulateArrival = {}
         )
     }
 }

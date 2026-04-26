@@ -7,7 +7,8 @@
     <string name="start_activity">התחל פעילות</string>
     <string name="next_stage">השלב הבא</string>
     <string name="end_activity">סיים פעילות</string>
-    <string name="simulate_journey">סימולציית מסע</string>
+    <string name="simulate_journey_departure">סימולציית מסע מתל אביב</string>
+    <string name="simulate_journey_arrival">סימולציית מסע מניו יורק</string>
     <string name="simulating">סימולציית מסע פעילה…</string>
 
     <!-- Stage display names (for Compose UI) -->

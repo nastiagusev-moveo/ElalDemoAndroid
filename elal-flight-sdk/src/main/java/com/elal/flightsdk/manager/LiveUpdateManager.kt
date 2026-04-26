@@ -98,6 +98,8 @@ object LiveUpdateManager {
     }
 
     fun startJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
+        if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled())
+            return Result.Failure(LiveUpdateError.NotificationsNotEnabled())
         if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
         log.i("startJourney: flight=${state.flightNumber} stage=${state.stage}")
         appContext = context.applicationContext
@@ -241,8 +243,10 @@ object LiveUpdateManager {
             currentState = state
             _stateFlow.value = state
             appContext = context.applicationContext
-            setupRealtimeClocks(state)
-            startSelfUpdate(state)
+            if (state.stage == Stage.DEPARTED) {
+                setupRealtimeClocks(state)
+                startSelfUpdate(state)
+            }
         } catch (e: Exception) {
             log.e("restoreFromPrefs: corrupt prefs, clearing — ${e.message}", e)
             prefs.edit().clear().apply()
