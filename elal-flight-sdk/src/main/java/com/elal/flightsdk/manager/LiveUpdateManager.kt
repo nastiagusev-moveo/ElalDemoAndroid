@@ -195,7 +195,7 @@ object LiveUpdateManager {
         isSelfUpdate: Boolean = false
     ): android.app.Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(chipIconFor(state.stage))
+            .setSmallIcon(notifIconFor(state))
             .setContentTitle(buildStatusBarText(context, state))
             .setContentText(buildContentText(context, state))
             .setStyle(buildProgressStyle(context, state))
@@ -367,6 +367,10 @@ object LiveUpdateManager {
             Stage.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
         }
     }
+
+    private fun notifIconFor(state: FlightContentState): Int =
+        if (state.carrier == com.elal.flightsdk.model.Carrier.SUN_DOR) R.drawable.ic_chip_sundor
+        else chipIconFor(state.stage)
 
     private fun chipIconFor(stage: Stage): Int = when (stage) {
         Stage.CHECK_IN                   -> R.drawable.ic_chip_checkin
