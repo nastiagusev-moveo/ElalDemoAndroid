@@ -4,6 +4,8 @@
     <string name="status_check_in">Check In</string>
     <string name="status_gate_ready">Gate Ready</string>
     <string name="status_boarding">Boarding</string>
+    <string name="status_last_call">Last Call</string>
+    <string name="status_taking_off">Taking Off</string>
     <string name="status_departed">Departed</string>
     <string name="status_landed">Landed</string>
     <string name="status_baggage">Baggage Claim</string>
@@ -19,6 +21,8 @@
     <string name="notif_content_check_in">Check-in desks: %s</string>
     <string name="notif_content_gate_ready">Gate: %s</string>
     <string name="notif_content_boarding">Gate: %s</string>
+    <string name="notif_content_last_call">No boarding after gate closes: %s</string>
+    <string name="notif_content_taking_off">Taking off at %s</string>
     <string name="notif_content_departed">Landing at %s</string>
     <string name="notif_content_arrival_baggage">Baggage claim will be at carousel: %s</string>
     <string name="notif_content_arrival_welcome">Welcome to %s</string>
@@ -28,6 +32,7 @@
     <!-- Notification chip text -->
     <string name="notif_chip_check_in">Check-in</string>
     <string name="notif_chip_boarding">Boarding</string>
+    <string name="notif_chip_taking_off">Please take a seat</string>
     <string name="notif_chip_on_the_way">En route</string>
     <string name="notif_chip_arrival">Arrival</string>
     <string name="notif_chip_connection_error">Offline</string>
@@ -37,6 +42,8 @@
     <string name="notif_statusbar_check_in">Baggage drop</string>
     <string name="notif_statusbar_gate_ready">Gate Ready</string>
     <string name="notif_statusbar_boarding">Boarding</string>
+    <string name="notif_statusbar_last_call">Last Call</string>
+    <string name="notif_statusbar_taking_off">Taking Off</string>
     <string name="notif_statusbar_departed">On The Way</string>
     <string name="notif_statusbar_landed">Landed</string>
     <string name="notif_statusbar_baggage">Baggage Claim</string>

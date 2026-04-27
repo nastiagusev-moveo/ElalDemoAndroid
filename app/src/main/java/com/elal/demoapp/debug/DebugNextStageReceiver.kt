@@ -24,7 +24,7 @@ class DebugNextStageReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION) return
-        val sequence = SampleFlightData.journeySimulationSequence
+        val sequence = SampleFlightData.arrivalSimulationSequence
         currentIndex = (currentIndex + 1).coerceAtMost(sequence.size - 1)
         LiveUpdateManager.updateJourney(context.applicationContext, sequence[currentIndex])
     }

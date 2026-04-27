@@ -6,8 +6,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.IBinder
+import android.util.Log
+import androidx.core.app.ServiceCompat
 
 class OnTheWayService : Service() {
+
+    companion object {
+        private const val TAG = "OnTheWayService"
+    }
     private var screenReceiver: BroadcastReceiver? = null
 
     override fun onCreate() {
@@ -36,16 +42,17 @@ class OnTheWayService : Service() {
         if (notification != null) {
             startForeground(LiveUpdateManager.NOTIFICATION_ID, notification)
         } else {
+            Log.e(TAG, "buildCurrentNotification returned null — showing GENERAL_ERROR and stopping")
+            val errorNotification = LiveUpdateManager.buildGeneralErrorNotification(this)
+            startForeground(LiveUpdateManager.NOTIFICATION_ID, errorNotification)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
             stopSelf()
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        // Detach before the service fully dies so Android doesn't auto-remove notification 7001.
-        // postNotification() may have already posted the next state (e.g. CONNECTION_ERROR mid-flight)
-        // and we don't want the service teardown to wipe it.
-        androidx.core.app.ServiceCompat.stopForeground(this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_DETACH)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         screenReceiver?.let { unregisterReceiver(it) }
         super.onDestroy()
     }

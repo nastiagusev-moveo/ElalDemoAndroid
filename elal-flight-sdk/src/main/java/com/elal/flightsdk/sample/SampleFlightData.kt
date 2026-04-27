@@ -41,31 +41,35 @@ object SampleFlightData {
             )
         }
 
-    // DEPARTURE: TLV → JFK — all 7 stages minus BAGGAGE
+    // DEPARTURE: TLV → JFK — no BAGGAGE stage
     val journeySimulationSequence: List<FlightContentState>
         get() {
             val base = departureBase
             return listOf(
-                base.copy(stage = Stage.CHECK_IN,  checkInCounters = "D78-99"),
-                base.copy(stage = Stage.GATE_READY, gate = "D3", terminal = "3"),
-                base.copy(stage = Stage.BOARDING,   gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.CHECK_IN,   checkInCounters = "D78-99"),
+                base.copy(stage = Stage.GATE_READY,  gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.BOARDING,    gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.LAST_CALL,   gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.TAKING_OFF),
                 base.copy(stage = Stage.DEPARTED),
-                base.copy(stage = Stage.LANDED,     terminal = "1"),
+                base.copy(stage = Stage.LANDED,      terminal = "1"),
                 base.copy(stage = Stage.COMPLETED)
             )
         }
 
-    // ARRIVAL: JFK → TLV — all 7 stages including BAGGAGE before COMPLETED
+    // ARRIVAL: JFK → TLV — includes BAGGAGE before COMPLETED
     val arrivalSimulationSequence: List<FlightContentState>
         get() {
             val base = arrivalBase
             return listOf(
-                base.copy(stage = Stage.CHECK_IN,  checkInCounters = "B12-18"),
-                base.copy(stage = Stage.GATE_READY, gate = "B7", terminal = "4"),
-                base.copy(stage = Stage.BOARDING,   gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.CHECK_IN,   checkInCounters = "B12-18"),
+                base.copy(stage = Stage.GATE_READY,  gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.BOARDING,    gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.LAST_CALL,   gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.TAKING_OFF),
                 base.copy(stage = Stage.DEPARTED),
-                base.copy(stage = Stage.LANDED,     terminal = "3"),
-                base.copy(stage = Stage.BAGGAGE,    baggageCarousel = "12"),
+                base.copy(stage = Stage.LANDED,      terminal = "3"),
+                base.copy(stage = Stage.BAGGAGE,     baggageCarousel = "12"),
                 base.copy(stage = Stage.COMPLETED)
             )
         }

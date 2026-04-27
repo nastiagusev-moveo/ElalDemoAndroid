@@ -35,7 +35,7 @@ import com.elal.flightsdk.utils.toMsReadable
 object LiveUpdateManager {
 
     internal const val NOTIFICATION_ID = 7001
-    private const val CHANNEL_ID = "elal_journey"
+    internal const val CHANNEL_ID = "elal_journey"
     private const val PROGRESS_MAX = 240
     // Android's ProgressStyle gap bug Fixed
     private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
@@ -128,22 +128,35 @@ object LiveUpdateManager {
 
         _stateFlow.value = state
 
-        if (state.stage == Stage.DEPARTED) {
-            if (selfUpdateState == null) {
-                setupRealtimeClocks(state)
-                startSelfUpdate(state)
+        when (state.stage) {
+            Stage.TAKING_OFF -> {
+                // Airplane sits static at flight-path start — service alive, no self-update yet
+                stopSelfUpdate()
+                flightStartRealtimeMs = 0L
+                flightTotalDurationMs = 0L
                 androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
-            } else {
-                selfUpdateState = state
-                setupRealtimeClocks(state)
             }
-        } else {
-            stopSelfUpdate()
-            flightStartRealtimeMs = 0L
-            flightTotalDurationMs = 0L
-            // LANDED: keep the service alive so Android doesn't tear down the foreground
-            // notification before postNotification() replaces it.
-            if (state.stage != Stage.LANDED && state.stage != Stage.BAGGAGE) {
+            Stage.DEPARTED -> {
+                if (selfUpdateState == null) {
+                    setupRealtimeClocks(state)
+                    startSelfUpdate(state)
+                    androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
+                } else {
+                    selfUpdateState = state
+                    setupRealtimeClocks(state)
+                }
+            }
+            Stage.LANDED, Stage.BAGGAGE -> {
+                // Keep the service alive so Android doesn't tear down the foreground
+                // notification before postNotification() replaces it.
+                stopSelfUpdate()
+                flightStartRealtimeMs = 0L
+                flightTotalDurationMs = 0L
+            }
+            else -> {
+                stopSelfUpdate()
+                flightStartRealtimeMs = 0L
+                flightTotalDurationMs = 0L
                 context.stopService(serviceIntent)
             }
         }
@@ -224,8 +237,23 @@ object LiveUpdateManager {
     }
 
     fun buildCurrentNotification(context: Context): android.app.Notification? {
-        val state = selfUpdateState ?: return null
-        return buildNotification(context, state, isSelfUpdate = true)
+        val state = selfUpdateState ?: currentState ?: return null
+        return buildNotification(context, state, isSelfUpdate = selfUpdateState != null)
+    }
+
+    internal fun buildGeneralErrorNotification(context: Context): android.app.Notification {
+        val errorState = currentState?.copy(stage = Stage.GENERAL_ERROR)
+        if (errorState != null) {
+            log.e("buildGeneralErrorNotification: active journey — transitioning to GENERAL_ERROR (flight=${errorState.flightNumber})")
+            _stateFlow.value = errorState
+            return buildNotification(context, errorState)
+        }
+        // No active state — bare notification to satisfy the Android foreground service contract
+        log.e("buildGeneralErrorNotification: no active state, showing bare error notification")
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_chip_error)
+            .setContentText(context.getString(R.string.notif_content_general_error))
+            .build()
     }
 
     private fun saveStateToPrefs(context: Context, state: FlightContentState) {
@@ -274,12 +302,12 @@ object LiveUpdateManager {
         val longSegLen   = PROGRESS_MAX - flightStart            // 154
 
         val progressIndex = when (state.stage) {
-            Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR -> -1
-            Stage.CHECK_IN                              ->  0
-            Stage.GATE_READY, Stage.BOARDING            ->  1
-            Stage.DEPARTED                              ->  2
-            Stage.LANDED, Stage.BAGGAGE                 ->  4
-            Stage.COMPLETED                             ->  4
+            Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR      -> -1
+            Stage.CHECK_IN                                   ->  0
+            Stage.GATE_READY, Stage.BOARDING, Stage.LAST_CALL ->  1
+            Stage.TAKING_OFF, Stage.DEPARTED                 ->  2
+            Stage.LANDED, Stage.BAGGAGE                      ->  4
+            Stage.COMPLETED                                  ->  4
         }
 
         val segments = listOf(
@@ -296,8 +324,8 @@ object LiveUpdateManager {
                 flightStart + filled
             }
             progressIndex >= 4 -> PROGRESS_MAX      // LANDED/BAGGAGE — end of bar
-            progressIndex >= 2 -> flightStart       // DEPARTED start — start of flight path
-            progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING — end of seg0
+            progressIndex >= 2 -> flightStart       // TAKING_OFF/DEPARTED — airplane at path start
+            progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING/LAST_CALL — end of seg0
             else               -> 0                 // CHECK_IN / errors
         }
 
@@ -307,10 +335,10 @@ object LiveUpdateManager {
             .setStyledByProgress(true)
 
         val trackerIcon = when (state.stage) {
-            Stage.DEPARTED -> R.drawable.ic_airplane_move_left_2
-            Stage.LANDED,
-            Stage.BAGGAGE  -> R.drawable.ic_airplane_land_left_2
-            else           -> R.drawable.ic_airplane_placeholder_transparent
+            Stage.TAKING_OFF           -> R.drawable.ic_airplane_taking_off_left_2
+            Stage.DEPARTED             -> R.drawable.ic_airplane_move_left_2
+            Stage.LANDED, Stage.BAGGAGE -> R.drawable.ic_airplane_land_left_2
+            else                       -> R.drawable.ic_airplane_placeholder_transparent
         }
         style.setProgressTrackerIcon(IconCompat.createWithResource(context, trackerIcon))
 
@@ -355,6 +383,8 @@ object LiveUpdateManager {
             Stage.CHECK_IN    -> context.getString(R.string.notif_content_check_in, bidi.unicodeWrap(state.checkInCounters.orDash()))
             Stage.GATE_READY  -> context.getString(R.string.notif_content_gate_ready, bidi.unicodeWrap(state.gate.orDash()))
             Stage.BOARDING    -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.gate.orDash()))
+            Stage.LAST_CALL   -> context.getString(R.string.notif_content_last_call, bidi.unicodeWrap(state.gate.orDash()))
+            Stage.TAKING_OFF  -> context.getString(R.string.notif_content_taking_off, bidi.unicodeWrap(state.departureTime.toFormattedTime()))
             Stage.DEPARTED    -> context.getString(R.string.notif_content_departed, bidi.unicodeWrap(state.arrivalTime.toFormattedTime()))
             Stage.LANDED      ->
                 if (state.direction == Direction.ARRIVAL)
@@ -373,9 +403,10 @@ object LiveUpdateManager {
         else chipIconFor(state.stage)
 
     private fun chipIconFor(stage: Stage): Int = when (stage) {
-        Stage.CHECK_IN                   -> R.drawable.ic_chip_checkin
-        Stage.GATE_READY, Stage.BOARDING -> R.drawable.ic_chip_boarding
-        Stage.DEPARTED                   -> R.drawable.ic_chip_ontheway
+        Stage.CHECK_IN                                      -> R.drawable.ic_chip_checkin
+        Stage.GATE_READY, Stage.BOARDING, Stage.LAST_CALL   -> R.drawable.ic_chip_boarding
+        Stage.TAKING_OFF                                    -> R.drawable.ic_chip_takeoff
+        Stage.DEPARTED                                      -> R.drawable.ic_chip_ontheway
         Stage.LANDED, Stage.BAGGAGE,
         Stage.COMPLETED                  -> R.drawable.ic_chip_arrival
         Stage.CONNECTION_ERROR,
@@ -385,7 +416,9 @@ object LiveUpdateManager {
     private fun buildChipText(context: Context, state: FlightContentState): String = when (state.stage) {
         Stage.CHECK_IN    -> state.checkInCounters ?: context.getString(R.string.notif_chip_check_in)
         Stage.GATE_READY,
-        Stage.BOARDING    -> state.gate ?: context.getString(R.string.notif_chip_boarding)
+        Stage.BOARDING,
+        Stage.LAST_CALL   -> state.gate ?: context.getString(R.string.notif_chip_boarding)
+        Stage.TAKING_OFF  -> context.getString(R.string.notif_chip_taking_off)
         Stage.DEPARTED    -> context.getString(R.string.notif_chip_on_the_way)
         Stage.LANDED,
         Stage.BAGGAGE,
@@ -403,6 +436,8 @@ object LiveUpdateManager {
             Stage.CHECK_IN    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_check_in)}"
             Stage.GATE_READY  -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_gate_ready)}"
             Stage.BOARDING    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding)}"
+            Stage.LAST_CALL   -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_last_call)}"
+            Stage.TAKING_OFF  -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_taking_off)}"
             Stage.DEPARTED    -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_departed)}"
             Stage.LANDED      -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_landed)}"
             Stage.BAGGAGE     -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_baggage)}"
