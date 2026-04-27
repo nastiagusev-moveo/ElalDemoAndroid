@@ -5,8 +5,8 @@
     <string name="status_gate_ready">שער מוכן</string>
     <string name="status_boarding">עלייה למטוס</string>
     <string name="status_last_call">קריאה אחרונה</string>
-    <string name="status_taking_off">ממריא</string>
     <string name="status_departed">המראה</string>
+    <string name="status_on_the_way">בדרך</string>
     <string name="status_landed">נחיתה</string>
     <string name="status_baggage">כבודה</string>
     <string name="status_completed">הסתיים</string>
@@ -22,8 +22,8 @@
     <string name="notif_content_gate_ready">שער: %s</string>
     <string name="notif_content_boarding">שער: %s</string>
     <string name="notif_content_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
-    <string name="notif_content_taking_off">המראה ב-%s</string>
-    <string name="notif_content_departed">נחיתה ב-%s</string>
+    <string name="notif_content_departed">המראה ב-%s</string>
+    <string name="notif_content_on_the_way">נחיתה ב-%s</string>
     <string name="notif_content_arrival_baggage">כבודה תגיע לקרוסלה: %s</string>
     <string name="notif_content_arrival_welcome">ברוכים הבאים ל-%s</string>
     <string name="notif_content_connection_error">נראה שאתה לא מחובר. בדוק את החיבור שלך.</string>
@@ -32,7 +32,7 @@
     <!-- Notification chip text -->
     <string name="notif_chip_check_in">צ\'ק-אין</string>
     <string name="notif_chip_boarding">עלייה למטוס</string>
-    <string name="notif_chip_taking_off">אנא התיישב</string>
+    <string name="notif_chip_departed">אנא התיישב</string>
     <string name="notif_chip_on_the_way">בדרך</string>
     <string name="notif_chip_arrival">נחיתה</string>
     <string name="notif_chip_connection_error">לא מקוון</string>
@@ -43,8 +43,8 @@
     <string name="notif_statusbar_gate_ready">שער מוכן</string>
     <string name="notif_statusbar_boarding">עלייה למטוס</string>
     <string name="notif_statusbar_last_call">קריאה אחרונה</string>
-    <string name="notif_statusbar_taking_off">ממריא</string>
-    <string name="notif_statusbar_departed">בדרך</string>
+    <string name="notif_statusbar_departed">המראה</string>
+    <string name="notif_statusbar_on_the_way">בדרך</string>
     <string name="notif_statusbar_landed">נחיתה</string>
     <string name="notif_statusbar_baggage">כבודה</string>
     <string name="notif_statusbar_completed">הסתיים</string>

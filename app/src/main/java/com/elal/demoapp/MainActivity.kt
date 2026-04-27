@@ -2,6 +2,7 @@ package com.elal.demoapp
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestNotificationPermissions() {
+        if (Build.VERSION.SDK_INT < 36) return
         val permissions = mutableListOf<String>()
 
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

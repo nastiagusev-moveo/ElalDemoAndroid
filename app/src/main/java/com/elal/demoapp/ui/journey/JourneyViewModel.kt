@@ -210,10 +210,10 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Auto-advances to LANDED once the arrival time is reached while in DEPARTED stage.
+     * Auto-advances to LANDED once the arrival time is reached while in ON_THE_WAY stage.
      */
     private fun manageArrivalWatch(state: FlightContentState) {
-        if (state.stage == Stage.DEPARTED) {
+        if (state.stage == Stage.ON_THE_WAY) {
             startArrivalWatch(state)
         } else {
             stopArrivalWatch()
@@ -244,8 +244,8 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             Stage.GATE_READY       -> UiText.StringResource(R.string.status_gate_ready)
             Stage.BOARDING         -> UiText.StringResource(R.string.status_boarding)
             Stage.LAST_CALL        -> UiText.StringResource(R.string.status_last_call)
-            Stage.TAKING_OFF       -> UiText.StringResource(R.string.status_taking_off)
             Stage.DEPARTED         -> UiText.StringResource(R.string.status_departed)
+            Stage.ON_THE_WAY       -> UiText.StringResource(R.string.status_on_the_way)
             Stage.LANDED           -> UiText.StringResource(R.string.status_landed)
             Stage.BAGGAGE          -> UiText.StringResource(R.string.status_baggage)
             Stage.COMPLETED        -> UiText.StringResource(R.string.status_completed)
@@ -257,8 +257,8 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             Stage.GATE_READY  -> UiText.StringResource(R.string.detail_gate_ready, state.gate.orDash())
             Stage.BOARDING    -> UiText.StringResource(R.string.detail_boarding, state.gate.orDash())
             Stage.LAST_CALL   -> UiText.StringResource(R.string.detail_last_call, state.gate.orDash())
-            Stage.TAKING_OFF  -> UiText.StringResource(R.string.detail_taking_off, state.departureTime.toFormattedTime())
-            Stage.DEPARTED    -> UiText.StringResource(R.string.detail_departed, state.arrivalTime.toFormattedTime())
+            Stage.DEPARTED    -> UiText.StringResource(R.string.detail_departed, state.departureTime.toFormattedTime())
+            Stage.ON_THE_WAY  -> UiText.StringResource(R.string.detail_on_the_way, state.arrivalTime.toFormattedTime())
             Stage.LANDED      -> UiText.StringResource(R.string.detail_landed, state.destination)
             Stage.BAGGAGE     -> UiText.StringResource(R.string.detail_baggage, state.baggageCarousel.orDash())
             Stage.COMPLETED   -> null

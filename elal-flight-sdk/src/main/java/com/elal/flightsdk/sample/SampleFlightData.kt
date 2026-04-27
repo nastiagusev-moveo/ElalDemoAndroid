@@ -50,8 +50,8 @@ object SampleFlightData {
                 base.copy(stage = Stage.GATE_READY,  gate = "D3", terminal = "3"),
                 base.copy(stage = Stage.BOARDING,    gate = "D3", terminal = "3"),
                 base.copy(stage = Stage.LAST_CALL,   gate = "D3", terminal = "3"),
-                base.copy(stage = Stage.TAKING_OFF),
                 base.copy(stage = Stage.DEPARTED),
+                base.copy(stage = Stage.ON_THE_WAY),
                 base.copy(stage = Stage.LANDED,      terminal = "1"),
                 base.copy(stage = Stage.COMPLETED)
             )
@@ -66,8 +66,8 @@ object SampleFlightData {
                 base.copy(stage = Stage.GATE_READY,  gate = "B7", terminal = "4"),
                 base.copy(stage = Stage.BOARDING,    gate = "B7", terminal = "4"),
                 base.copy(stage = Stage.LAST_CALL,   gate = "B7", terminal = "4"),
-                base.copy(stage = Stage.TAKING_OFF),
                 base.copy(stage = Stage.DEPARTED),
+                base.copy(stage = Stage.ON_THE_WAY),
                 base.copy(stage = Stage.LANDED,      terminal = "3"),
                 base.copy(stage = Stage.BAGGAGE,     baggageCarousel = "12"),
                 base.copy(stage = Stage.COMPLETED)

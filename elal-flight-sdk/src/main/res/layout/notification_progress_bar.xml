@@ -11,7 +11,7 @@
       - Grey  (#9E9E9E) = pending         → notification_seg_inactive
       - Step 1 CHECK_IN:                  nothing green
       - Step 2 BOARDING_SOON/BOARDING/LAST_CALL: seg0 green
-      - Step 3 TAKING_OFF:                seg0 + seg1 green
+      - Step 3 DEPARTED:                  seg0 + seg1 green
       - Step 4 ON_THE_WAY:                seg0 + seg1 + seg2 green
       - Step 5 ARRIVAL:                   all 4 segments green
       - setStyledByProgress(false)        → colors set explicitly per-segment
