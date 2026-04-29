@@ -2,6 +2,7 @@ package com.elal.demoapp.firebase
 
 import com.elal.flightsdk.manager.LiveUpdateManager
 import com.elal.flightsdk.manager.onFailure
+import com.elal.flightsdk.model.AppLanguage
 import com.elal.flightsdk.model.Carrier
 import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
@@ -11,16 +12,6 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import java.time.Instant
 
-/**
- * Receives FCM data messages and drives the live-update notification.
- *
- * Expected flat data fields:
- *   event, activityId, flightNumber, flightDate, direction, carrier,
- *   origin, destination, departureTime, arrivalTime, terminal, gate,
- *   baggageCarousel, checkInCounters, stage, message, language
- *
- * Called even when the app is killed (FCM wakes the process).
- */
 class FlightMessagingService : FirebaseMessagingService() {
 
     private val log = Logger("FlightMessagingService")
@@ -29,20 +20,28 @@ class FlightMessagingService : FirebaseMessagingService() {
         val data = message.data
         if (data.isEmpty()) return
 
+        val event = data["event"]?.lowercase()
+
+        LiveUpdateManager.ensureChannel(applicationContext)
+
+        if (event == "end") {
+            log.i("FCM event=end — ending journey")
+            LiveUpdateManager.endJourney(applicationContext)
+            return
+        }
+
         val state = runCatching { data.toFlightContentState() }
             .onFailure { log.e("Failed to parse FCM data: ${it.message}", it) }
             .getOrNull() ?: return
 
-        LiveUpdateManager.ensureChannel(applicationContext)
-
-        val result = if (LiveUpdateManager.isActive) {
-            LiveUpdateManager.updateJourney(applicationContext, state)
-        } else {
+        val result = if (event == "start" || !LiveUpdateManager.isActive) {
             LiveUpdateManager.startJourney(applicationContext, state)
+        } else {
+            LiveUpdateManager.updateJourney(applicationContext, state)
         }
 
         result.onFailure { error ->
-            log.e("LiveUpdateManager rejected FCM state (${state.stage}): $error")
+            log.e("LiveUpdateManager rejected FCM event='$event' (${state.stage}): $error")
         }
     }
 
@@ -67,9 +66,12 @@ private fun Map<String, String>.toFlightContentState(): FlightContentState =
         gate            = get("gate")?.takeIf { it.isNotEmpty() },
         baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() },
         checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() },
+        boardingZone    = get("boardingZone")?.takeIf { it.isNotEmpty() },
         stage           = Stage.valueOf(requireField("stage").uppercase()),
         message         = get("message") ?: "",
-        language        = get("language") ?: "EN"
+        language        = get("language")?.uppercase()
+                            ?.let { runCatching { AppLanguage.valueOf(it) }.getOrElse { AppLanguage.EN } }
+                            ?: AppLanguage.EN
     )
 
 private fun Map<String, String>.requireField(key: String): String =

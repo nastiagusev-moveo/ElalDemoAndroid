@@ -389,7 +389,7 @@ object LiveUpdateManager {
         return when (state.stage) {
             Stage.CHECK_IN    -> context.getString(R.string.notif_content_check_in, bidi.unicodeWrap(state.checkInCounters.orDash()))
             Stage.GATE_READY  -> context.getString(R.string.notif_content_gate_ready, bidi.unicodeWrap(state.gate.orDash()))
-            Stage.BOARDING    -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.gate.orDash()))
+            Stage.BOARDING    -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.boardingZone.orDash()))
             Stage.LAST_CALL   -> context.getString(R.string.notif_content_last_call, bidi.unicodeWrap(state.gate.orDash()))
             Stage.DEPARTED    -> context.getString(R.string.notif_content_departed, bidi.unicodeWrap(state.departureTime.toFormattedTime()))
             Stage.ON_THE_WAY  -> context.getString(R.string.notif_content_on_the_way, bidi.unicodeWrap(state.arrivalTime.toFormattedTime()))

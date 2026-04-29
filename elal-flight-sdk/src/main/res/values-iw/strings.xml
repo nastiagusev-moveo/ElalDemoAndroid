@@ -20,7 +20,7 @@
     <!-- Notification content text (format strings) -->
     <string name="notif_content_check_in">דלפקי צ\'ק-אין: %s</string>
     <string name="notif_content_gate_ready">שער: %s</string>
-    <string name="notif_content_boarding">שער: %s</string>
+    <string name="notif_content_boarding">האזור שלך: %s</string>
     <string name="notif_content_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
     <string name="notif_content_departed">המראה ב-%s</string>
     <string name="notif_content_on_the_way">נחיתה ב-%s</string>

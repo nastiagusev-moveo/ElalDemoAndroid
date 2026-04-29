@@ -16,6 +16,9 @@ enum class Direction { DEPARTURE, ARRIVAL }
 enum class Carrier { EL_AL, SUN_DOR }
 
 @Serializable
+enum class AppLanguage { EN, HE }
+
+@Serializable
 data class FlightContentState(
     val activityId: String = "sim-123",
     val flightNumber: String = "",
@@ -31,8 +34,9 @@ data class FlightContentState(
     val baggageCarousel: String? = null,
     val stage: Stage,
     val checkInCounters: String? = null,
+    val boardingZone: String? = null,
     val progressFraction: Double = 0.0,
     val flightStatus: String? = null,
     val message: String = "",
-    val language: String = "EN"
+    val language: AppLanguage = AppLanguage.EN
 )

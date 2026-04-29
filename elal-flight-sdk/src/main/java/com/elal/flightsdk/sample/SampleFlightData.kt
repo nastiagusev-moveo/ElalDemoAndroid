@@ -48,7 +48,7 @@ object SampleFlightData {
             return listOf(
                 base.copy(stage = Stage.CHECK_IN,   checkInCounters = "D78-99"),
                 base.copy(stage = Stage.GATE_READY,  gate = "D3", terminal = "3"),
-                base.copy(stage = Stage.BOARDING,    gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.BOARDING,    gate = "D3", terminal = "3", boardingZone = "Zone 1"),
                 base.copy(stage = Stage.LAST_CALL,   gate = "D3", terminal = "3"),
                 base.copy(stage = Stage.DEPARTED),
                 base.copy(stage = Stage.ON_THE_WAY),
@@ -64,7 +64,7 @@ object SampleFlightData {
             return listOf(
                 base.copy(stage = Stage.CHECK_IN,   checkInCounters = "B12-18"),
                 base.copy(stage = Stage.GATE_READY,  gate = "B7", terminal = "4"),
-                base.copy(stage = Stage.BOARDING,    gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.BOARDING,    gate = "B7", terminal = "4", boardingZone = "Zone 1"),
                 base.copy(stage = Stage.LAST_CALL,   gate = "B7", terminal = "4"),
                 base.copy(stage = Stage.DEPARTED),
                 base.copy(stage = Stage.ON_THE_WAY),
