@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "874336666250",
+    "project_id": "elaldemoandroid",
+    "storage_bucket": "elaldemoandroid.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:874336666250:android:a65d7c724a029779d9e373",
+        "android_client_info": {
+          "package_name": "com.elal.demoapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA06zbQs6J_JopY9pFtkeA2YFS2g16Ncc4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -23,6 +23,14 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".firebase.FlightMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- TODO: DEBUG - Remove before release -->
         <receiver
             android:name=".debug.DebugNextStageReceiver"
