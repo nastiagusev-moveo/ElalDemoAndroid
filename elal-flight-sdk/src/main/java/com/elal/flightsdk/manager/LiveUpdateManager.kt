@@ -83,7 +83,7 @@ object LiveUpdateManager {
     }
 
     // TODO: for DEBUG only
-    var debugNextStageIntent: PendingIntent? = null
+    //var debugNextStageIntent: PendingIntent? = null
 
     fun ensureChannel(context: Context) {
         if (!isSupported) return
@@ -229,7 +229,7 @@ object LiveUpdateManager {
                 state.stage == Stage.GENERAL_ERROR
             )
         // TODO: for DEBUG only
-        debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
+        //debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
         return builder.build()
     }
 
