@@ -18,10 +18,10 @@ enum class Carrier { EL_AL, SUN_DOR }
 @Serializable
 data class FlightContentState(
     val activityId: String = "sim-123",
-    val flightNumber: String,
-    val flightDate: String,
-    val direction: Direction,
-    val carrier: Carrier,
+    val flightNumber: String = "",
+    val flightDate: String = "",
+    val direction: Direction = Direction.DEPARTURE,
+    val carrier: Carrier = Carrier.EL_AL,
     val origin: String,
     val destination: String,
     @Serializable(with = InstantSerializer::class) val departureTime: Instant,
