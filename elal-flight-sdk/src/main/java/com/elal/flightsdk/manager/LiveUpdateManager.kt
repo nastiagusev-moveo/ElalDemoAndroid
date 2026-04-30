@@ -18,15 +18,12 @@ import com.elal.flightsdk.model.Stage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.toHhMmSs
 import com.elal.flightsdk.utils.toMmSs
 import com.elal.flightsdk.utils.toMsReadable
-import androidx.core.content.edit
 
 /**
  * Manages the lifecycle of Live Update notifications.
@@ -47,11 +44,6 @@ object LiveUpdateManager {
     private const val ProgressBarGrey = 0xFF8E93A5.toInt()
 
     private val log = Logger("LiveUpdateManager")
-
-    private val jsonFormat = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
 
     var uiDebugMode: Boolean = false
 
@@ -126,7 +118,7 @@ object LiveUpdateManager {
         log.d("updateJourney: stage=${state.stage}")
 
         currentState = state
-        saveStateToPrefs(context, state)
+        JourneyPrefs.saveState(context, state)
 
         val serviceIntent = android.content.Intent(context, OnTheWayService::class.java)
 
@@ -183,7 +175,7 @@ object LiveUpdateManager {
         stopSelfUpdate()
         context.stopService(android.content.Intent(context, OnTheWayService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
-        context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+        JourneyPrefs.clear(context)
         currentState = null
         _stateFlow.value = null
         flightStartRealtimeMs = 0L
@@ -207,8 +199,7 @@ object LiveUpdateManager {
 
     private fun scheduleDepartedToOnTheWayTimer(context: Context) {
         val targetMs = System.currentTimeMillis() + DEPARTED_TO_ON_THE_WAY_DELAY_MS
-        context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
-            .edit { putLong("on_the_way_target_ms", targetMs) }
+        JourneyPrefs.saveOnTheWayTargetMs(context, targetMs)
         postOnTheWayHandlerAfter(DEPARTED_TO_ON_THE_WAY_DELAY_MS)
         log.d("⏱️ DEPARTED timer scheduled: ON_THE_WAY will fire in ${DEPARTED_TO_ON_THE_WAY_DELAY_MS / 1000}s")
     }
@@ -231,8 +222,7 @@ object LiveUpdateManager {
             log.d("⏱️ DEPARTED timer cancelled")
         }
         departedOnTheWayRunnable = null
-        appContext?.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
-            ?.edit { remove("on_the_way_target_ms") }
+        appContext?.let { JourneyPrefs.clearOnTheWayTargetMs(it) }
     }
 
     fun pauseTicks() {
@@ -298,51 +288,37 @@ object LiveUpdateManager {
             .build()
     }
 
-    private fun saveStateToPrefs(context: Context, state: FlightContentState) {
-        val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString("state", jsonFormat.encodeToString(state))
-            .apply()
-    }
-
     fun restoreFromPrefs(context: Context) {
         if (!isSupported) return
-        val prefs = context.getSharedPreferences("journey_prefs", Context.MODE_PRIVATE)
-        val stateJson = prefs.getString("state", null) ?: return
-        try {
-            val state = jsonFormat.decodeFromString<FlightContentState>(stateJson)
-            currentState = state
-            _stateFlow.value = state
-            appContext = context.applicationContext
-            when (state.stage) {
-                Stage.ON_THE_WAY -> {
-                    setupRealtimeClocks(state)
-                    startSelfUpdate(state)
-                }
-                Stage.DEPARTED -> {
-                    val targetMs = prefs.getLong("on_the_way_target_ms", 0L)
-                    if (targetMs > 0L) {
-                        val remainingMs = targetMs - System.currentTimeMillis()
-                        if (remainingMs <= 0) {
-                            log.i("⏱️ RESTORE: DEPARTED timer already expired — firing ON_THE_WAY immediately")
-                            prefs.edit { remove("on_the_way_target_ms") }
-                            val onTheWayState = state.copy(stage = Stage.ON_THE_WAY)
-                            currentState = onTheWayState
-                            _stateFlow.value = onTheWayState
-                            saveStateToPrefs(context, onTheWayState)
-                            setupRealtimeClocks(onTheWayState)
-                            startSelfUpdate(onTheWayState)
-                        } else {
-                            log.i("⏱️ RESTORE: DEPARTED timer resuming — ${remainingMs / 1000}s remaining")
-                            postOnTheWayHandlerAfter(remainingMs)
-                        }
+        val state = JourneyPrefs.loadState(context) ?: return
+        currentState = state
+        _stateFlow.value = state
+        appContext = context.applicationContext
+        when (state.stage) {
+            Stage.ON_THE_WAY -> {
+                setupRealtimeClocks(state)
+                startSelfUpdate(state)
+            }
+            Stage.DEPARTED -> {
+                val targetMs = JourneyPrefs.loadOnTheWayTargetMs(context)
+                if (targetMs > 0L) {
+                    val remainingMs = targetMs - System.currentTimeMillis()
+                    if (remainingMs <= 0) {
+                        log.i("⏱️ RESTORE: DEPARTED timer already expired — firing ON_THE_WAY immediately")
+                        JourneyPrefs.clearOnTheWayTargetMs(context)
+                        val onTheWayState = state.copy(stage = Stage.ON_THE_WAY)
+                        currentState = onTheWayState
+                        _stateFlow.value = onTheWayState
+                        JourneyPrefs.saveState(context, onTheWayState)
+                        setupRealtimeClocks(onTheWayState)
+                        startSelfUpdate(onTheWayState)
+                    } else {
+                        log.i("⏱️ RESTORE: DEPARTED timer resuming — ${remainingMs / 1000}s remaining")
+                        postOnTheWayHandlerAfter(remainingMs)
                     }
                 }
-                else -> Unit
             }
-        } catch (e: Exception) {
-            log.e("restoreFromPrefs: corrupt prefs, clearing — ${e.message}", e)
-            prefs.edit { clear() }
+            else -> Unit
         }
     }
 
