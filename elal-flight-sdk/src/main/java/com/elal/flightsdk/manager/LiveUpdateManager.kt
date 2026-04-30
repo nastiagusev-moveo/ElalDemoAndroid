@@ -152,8 +152,6 @@ object LiveUpdateManager {
                 }
             }
             Stage.LANDED, Stage.BAGGAGE -> {
-                // Keep the service alive so Android doesn't tear down the foreground
-                // notification before postNotification() replaces it.
                 stopSelfUpdate()
                 flightStartRealtimeMs = 0L
                 flightTotalDurationMs = 0L
@@ -204,7 +202,6 @@ object LiveUpdateManager {
 
     fun resumeTicks() {
         handler.removeCallbacks(selfUpdateRunnable)
-        // Posts immediately; elapsedRealtime() calculates the correct position
         handler.post(selfUpdateRunnable)
     }
 
