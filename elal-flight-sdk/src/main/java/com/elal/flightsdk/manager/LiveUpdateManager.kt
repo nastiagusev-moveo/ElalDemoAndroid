@@ -61,9 +61,12 @@ object LiveUpdateManager {
     val isActive: Boolean get() = currentState != null
     private var flightStartRealtimeMs: Long = 0L
     private var flightTotalDurationMs: Long = 0L
+    private const val DEPARTED_TO_ON_THE_WAY_DELAY_MS = 20 * 60 * 1000L  // 20 minutes
+
     private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
     private var selfUpdateState: FlightContentState? = null
+    private var departedOnTheWayRunnable: Runnable? = null
     private val selfUpdateRunnable: Runnable = object : Runnable {
         override fun run() {
             val ctx = appContext ?: return
@@ -105,7 +108,7 @@ object LiveUpdateManager {
         if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled())
             return Result.Failure(LiveUpdateError.NotificationsNotEnabled())
         if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
-        log.i("startJourney: flight=${state.flightNumber} stage=${state.stage}")
+        log.d("startJourney: flight=${state.flightNumber} stage=${state.stage}")
         appContext = context.applicationContext
         ensureChannel(context)
         currentState = state
@@ -135,13 +138,15 @@ object LiveUpdateManager {
 
         when (state.stage) {
             Stage.DEPARTED -> {
-                // Airplane sits static at flight-path start — service alive, no self-update yet
                 stopSelfUpdate()
+                cancelDepartedTimer()
                 flightStartRealtimeMs = 0L
                 flightTotalDurationMs = 0L
+                scheduleDepartedToOnTheWayTimer(context)
                 androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
             }
             Stage.ON_THE_WAY -> {
+                cancelDepartedTimer()
                 if (selfUpdateState == null) {
                     setupRealtimeClocks(state)
                     startSelfUpdate(state)
@@ -152,11 +157,13 @@ object LiveUpdateManager {
                 }
             }
             Stage.LANDED, Stage.BAGGAGE -> {
+                cancelDepartedTimer()
                 stopSelfUpdate()
                 flightStartRealtimeMs = 0L
                 flightTotalDurationMs = 0L
             }
             else -> {
+                cancelDepartedTimer()
                 stopSelfUpdate()
                 flightStartRealtimeMs = 0L
                 flightTotalDurationMs = 0L
@@ -171,6 +178,7 @@ object LiveUpdateManager {
     fun endJourney(context: Context) {
         if (!isSupported) return
         log.i("endJourney")
+        cancelDepartedTimer()
         stopSelfUpdate()
         context.stopService(android.content.Intent(context, OnTheWayService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
@@ -194,6 +202,27 @@ object LiveUpdateManager {
         handler.removeCallbacks(selfUpdateRunnable)
         selfUpdateState = null
         log.i("🛑 SELF-UPDATE NOT ACTIVE")
+    }
+
+    private fun scheduleDepartedToOnTheWayTimer(context: Context) {
+        val runnable = Runnable {
+            departedOnTheWayRunnable = null
+            val ctx = appContext ?: return@Runnable
+            val latestState = currentState ?: return@Runnable
+            log.d("⏱️ DEPARTED→ON_THE_WAY: 20-min timer Finished")
+            updateJourney(ctx, latestState.copy(stage = Stage.ON_THE_WAY))
+        }
+        departedOnTheWayRunnable = runnable
+        handler.postDelayed(runnable, DEPARTED_TO_ON_THE_WAY_DELAY_MS)
+        log.d("⏱️ DEPARTED timer scheduled: ON_THE_WAY will fire in 20 minutes")
+    }
+
+    private fun cancelDepartedTimer() {
+        departedOnTheWayRunnable?.let {
+            handler.removeCallbacks(it)
+            log.d("⏱️ DEPARTED timer cancelled")
+        }
+        departedOnTheWayRunnable = null
     }
 
     fun pauseTicks() {
