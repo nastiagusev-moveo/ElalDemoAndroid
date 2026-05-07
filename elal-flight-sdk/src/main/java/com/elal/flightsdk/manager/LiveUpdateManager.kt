@@ -39,10 +39,6 @@ object LiveUpdateManager {
     private val isSupported: Boolean get() = Build.VERSION.SDK_INT >= MIN_API
     // Android's ProgressStyle gap bug Fixed
     private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
-
-    private const val ProgressBarBlue = 0xFF1B358F.toInt()
-    private const val ProgressBarGrey = 0xFF8E93A5.toInt()
-
     private val log = Logger("LiveUpdateManager")
 
     var uiDebugMode: Boolean = false
@@ -351,10 +347,12 @@ object LiveUpdateManager {
             Stage.COMPLETED                                  ->  4
         }
 
+        val segmentColor = context.getColor(R.color.progress_bar_segment)
+
         val segments = listOf(
-            ProgressStyle.Segment(seg0Len).setColor(ProgressBarBlue),
-            ProgressStyle.Segment(seg1Len).setColor(ProgressBarBlue),
-            ProgressStyle.Segment(longSegLen).setColor(ProgressBarBlue)
+            ProgressStyle.Segment(seg0Len).setColor(segmentColor),
+            ProgressStyle.Segment(seg1Len).setColor(segmentColor),
+            ProgressStyle.Segment(longSegLen).setColor(segmentColor)
         )
 
         val progress: Int = when {
