@@ -11,6 +11,9 @@ import com.elal.flightsdk.utils.Logger
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class FlightMessagingService : FirebaseMessagingService() {
 
@@ -30,11 +33,14 @@ class FlightMessagingService : FirebaseMessagingService() {
             return
         }
 
-        val state = runCatching { data.toFlightContentState() }
+        val isStart = event == "start" || !LiveUpdateManager.isActive
+        val fallback = if (!isStart) LiveUpdateManager.stateFlow.value else null
+
+        val state = runCatching { data.toFlightContentState(fallback) }
             .onFailure { log.e("Failed to parse FCM data: ${it.message}", it) }
             .getOrNull() ?: return
 
-        val result = if (event == "start" || !LiveUpdateManager.isActive) {
+        val result = if (isStart) {
             LiveUpdateManager.startJourney(applicationContext, state)
         } else {
             LiveUpdateManager.updateJourney(applicationContext, state)
@@ -51,28 +57,43 @@ class FlightMessagingService : FirebaseMessagingService() {
     }
 }
 
-private fun Map<String, String>.toFlightContentState(): FlightContentState =
+private fun Map<String, String>.toFlightContentState(fallback: FlightContentState? = null): FlightContentState =
     FlightContentState(
-        activityId      = get("activityId") ?: "",
-        flightNumber    = get("flightNumber") ?: "",
-        flightDate      = get("flightDate") ?: "",
-        direction       = Direction.valueOf(requireField("direction").uppercase()),
-        carrier         = Carrier.valueOf(requireField("carrier").uppercase()),
-        origin          = requireField("origin"),
-        destination     = requireField("destination"),
-        departureTime   = Instant.parse(requireField("departureTime")),
-        arrivalTime     = Instant.parse(requireField("arrivalTime")),
-        terminal        = get("terminal")?.takeIf { it.isNotEmpty() },
-        gate            = get("gate")?.takeIf { it.isNotEmpty() },
-        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() },
-        checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() },
-        boardingZone    = get("boardingZone")?.takeIf { it.isNotEmpty() },
+        activityId      = get("activityId")?.takeIf { it.isNotEmpty() } ?: fallback?.activityId ?: "",
+        flightNumber    = get("flightNumber")?.takeIf { it.isNotEmpty() } ?: fallback?.flightNumber ?: "",
+        flightDate      = get("flightDate")?.takeIf { it.isNotEmpty() } ?: fallback?.flightDate ?: "",
+        direction       = get("direction")?.takeIf { it.isNotEmpty() }
+                            ?.let { Direction.valueOf(it.uppercase()) }
+                            ?: fallback?.direction
+                            ?: Direction.valueOf(requireField("direction").uppercase()),
+        carrier         = get("carrier")?.takeIf { it.isNotEmpty() }
+                            ?.let { Carrier.valueOf(it.uppercase()) }
+                            ?: fallback?.carrier
+                            ?: Carrier.valueOf(requireField("carrier").uppercase()),
+        origin          = get("origin")?.takeIf { it.isNotEmpty() } ?: fallback?.origin ?: requireField("origin"),
+        destination     = get("destination")?.takeIf { it.isNotEmpty() } ?: fallback?.destination ?: requireField("destination"),
+        departureTime   = get("departureTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
+                            ?: fallback?.departureTime
+                            ?: parseServerTime(requireField("departureTime")),
+        arrivalTime     = get("arrivalTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
+                            ?: fallback?.arrivalTime
+                            ?: parseServerTime(requireField("arrivalTime")),
+        terminal        = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal,
+        gate            = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate,
+        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() } ?: fallback?.baggageCarousel,
+        checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters,
+        boardingZone    = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone,
         stage           = Stage.valueOf(requireField("stage").uppercase()),
         message         = get("message") ?: "",
         language        = get("language")?.uppercase()
                             ?.let { runCatching { AppLanguage.valueOf(it) }.getOrElse { AppLanguage.EN } }
+                            ?: fallback?.language
                             ?: AppLanguage.EN
     )
+
+private fun parseServerTime(value: String): Instant =
+    LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        .toInstant(ZoneOffset.UTC)
 
 private fun Map<String, String>.requireField(key: String): String =
     get(key)?.takeIf { it.isNotEmpty() }

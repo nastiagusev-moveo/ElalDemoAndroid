@@ -1,5 +1,6 @@
 package com.elal.flightsdk.sample
 
+import com.elal.flightsdk.model.AppLanguage
 import com.elal.flightsdk.model.Carrier
 import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
@@ -21,7 +22,8 @@ object SampleFlightData {
                 destination = "JFK",
                 departureTime = now,
                 arrivalTime = now.plus(5, ChronoUnit.MINUTES).plus(30, ChronoUnit.SECONDS),
-                stage = Stage.CHECK_IN
+                stage = Stage.CHECK_IN,
+                language = AppLanguage.EN
             )
         }
 
@@ -37,7 +39,8 @@ object SampleFlightData {
                 destination = "TLV",
                 departureTime = now,
                 arrivalTime = now.plus(5, ChronoUnit.MINUTES).plus(30, ChronoUnit.SECONDS),
-                stage = Stage.CHECK_IN
+                stage = Stage.CHECK_IN,
+                language = AppLanguage.EN
             )
         }
 

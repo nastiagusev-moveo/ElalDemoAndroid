@@ -1,24 +1,21 @@
 package com.elal.flightsdk.utils
 
 import java.time.Instant
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
 fun String?.orDash(): String = this ?: "--"
 
+private val HH_MM = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC)
+
 fun Instant?.toFormattedTime(): String {
     if (this == null) return "--"
-    val local = atZone(ZoneId.systemDefault())
-    return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-        .withLocale(Locale.getDefault())
-        .format(local)
+    return HH_MM.format(this)
 }
 
 fun Instant.toHhMmSs(): String {
-    val local = atZone(ZoneId.systemDefault())
-    return "%02d:%02d:%02d".format(local.hour, local.minute, local.second)
+    val utc = atZone(ZoneOffset.UTC)
+    return "%02d:%02d:%02d".format(utc.hour, utc.minute, utc.second)
 }
 
 fun Long.toMmSs(): String {

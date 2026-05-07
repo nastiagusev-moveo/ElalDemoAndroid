@@ -20,11 +20,11 @@ enum class AppLanguage { EN, HE }
 
 @Serializable
 data class FlightContentState(
-    val activityId: String = "sim-123",
+    val activityId: String = "",
     val flightNumber: String = "",
     val flightDate: String = "",
-    val direction: Direction = Direction.DEPARTURE,
-    val carrier: Carrier = Carrier.EL_AL,
+    val direction: Direction,
+    val carrier: Carrier,
     val origin: String,
     val destination: String,
     @Serializable(with = InstantSerializer::class) val departureTime: Instant,
@@ -38,5 +38,5 @@ data class FlightContentState(
     val progressFraction: Double = 0.0,
     val flightStatus: String? = null,
     val message: String = "",
-    val language: AppLanguage = AppLanguage.EN
+    val language: AppLanguage
 )
