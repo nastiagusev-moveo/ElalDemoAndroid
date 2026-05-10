@@ -5,14 +5,14 @@ import com.elal.flightsdk.model.Carrier
 import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
 import com.elal.flightsdk.model.Stage
-import java.time.Instant
+import com.elal.flightsdk.utils.wallClockNow
 import java.time.temporal.ChronoUnit
 
 object SampleFlightData {
 
     private val departureBase: FlightContentState
         get() {
-            val now = Instant.now()
+            val now = wallClockNow()
             return FlightContentState(
                 flightNumber = "LY 317",
                 flightDate = "2026-04-26",
@@ -29,7 +29,7 @@ object SampleFlightData {
 
     private val arrivalBase: FlightContentState
         get() {
-            val now = Instant.now()
+            val now = wallClockNow()
             return FlightContentState(
                 flightNumber = "LY 316",
                 flightDate = "2026-04-26",
@@ -54,7 +54,7 @@ object SampleFlightData {
                 base.copy(stage = Stage.BOARDING,    gate = "D3", terminal = "3", boardingZone = "Zone 1"),
                 base.copy(stage = Stage.LAST_CALL,   gate = "D3", terminal = "3"),
                 base.copy(stage = Stage.DEPARTED),
-                base.copy(stage = Stage.ON_THE_WAY),
+                base.copy(stage = Stage.IN_FLIGHT),
                 base.copy(stage = Stage.LANDED,      terminal = "1"),
                 base.copy(stage = Stage.COMPLETED)
             )
@@ -70,7 +70,7 @@ object SampleFlightData {
                 base.copy(stage = Stage.BOARDING,    gate = "B7", terminal = "4", boardingZone = "Zone 1"),
                 base.copy(stage = Stage.LAST_CALL,   gate = "B7", terminal = "4"),
                 base.copy(stage = Stage.DEPARTED),
-                base.copy(stage = Stage.ON_THE_WAY),
+                base.copy(stage = Stage.IN_FLIGHT),
                 base.copy(stage = Stage.LANDED,      terminal = "3"),
                 base.copy(stage = Stage.BAGGAGE,     baggageCarousel = "12"),
                 base.copy(stage = Stage.COMPLETED)

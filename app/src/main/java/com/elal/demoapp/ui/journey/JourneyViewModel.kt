@@ -16,6 +16,7 @@ import com.elal.flightsdk.model.Stage
 import com.elal.flightsdk.sample.SampleFlightData
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
+import com.elal.flightsdk.utils.wallClockNow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.time.Instant
 
 class JourneyViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -210,10 +210,10 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Auto-advances to LANDED once the arrival time is reached while in ON_THE_WAY stage.
+     * Auto-advances to LANDED once the arrival time is reached while in IN_FLIGHT stage.
      */
     private fun manageArrivalWatch(state: FlightContentState) {
-        if (state.stage == Stage.ON_THE_WAY) {
+        if (state.stage == Stage.IN_FLIGHT) {
             startArrivalWatch(state)
         } else {
             stopArrivalWatch()
@@ -225,7 +225,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         arrivalWatchJob = viewModelScope.launch {
             while (isActive) {
                 delay(ARRIVAL_CHECK_INTERVAL_MS)
-                if (Instant.now() >= state.arrivalTime) {
+                if (wallClockNow() >= state.arrivalTime) {
                     updateToNextState()
                     break
                 }
@@ -245,7 +245,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             Stage.BOARDING         -> UiText.StringResource(R.string.status_boarding)
             Stage.LAST_CALL        -> UiText.StringResource(R.string.status_last_call)
             Stage.DEPARTED         -> UiText.StringResource(R.string.status_departed)
-            Stage.ON_THE_WAY       -> UiText.StringResource(R.string.status_on_the_way)
+            Stage.IN_FLIGHT       -> UiText.StringResource(R.string.status_in_flight)
             Stage.LANDED           -> UiText.StringResource(R.string.status_landed)
             Stage.BAGGAGE          -> UiText.StringResource(R.string.status_baggage)
             Stage.COMPLETED        -> UiText.StringResource(R.string.status_completed)
@@ -258,7 +258,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             Stage.BOARDING    -> UiText.StringResource(R.string.detail_boarding, state.gate.orDash())
             Stage.LAST_CALL   -> UiText.StringResource(R.string.detail_last_call, state.gate.orDash())
             Stage.DEPARTED    -> UiText.StringResource(R.string.detail_departed, state.departureTime.toFormattedTime())
-            Stage.ON_THE_WAY  -> UiText.StringResource(R.string.detail_on_the_way, state.arrivalTime.toFormattedTime())
+            Stage.IN_FLIGHT  -> UiText.StringResource(R.string.detail_in_flight, state.arrivalTime.toFormattedTime())
             Stage.LANDED      -> UiText.StringResource(R.string.detail_landed, state.destination)
             Stage.BAGGAGE     -> UiText.StringResource(R.string.detail_baggage, state.baggageCarousel.orDash())
             Stage.COMPLETED   -> null

@@ -1,10 +1,13 @@
 package com.elal.flightsdk.utils
 
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 fun String?.orDash(): String = this ?: "--"
+
+fun wallClockNow(): Instant = LocalDateTime.now().toInstant(ZoneOffset.UTC)
 
 private val HH_MM = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC)
 

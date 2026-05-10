@@ -9,10 +9,10 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ServiceCompat
 
-class OnTheWayService : Service() {
+class InFlightService : Service() {
 
     companion object {
-        private const val TAG = "OnTheWayService"
+        private const val TAG = "InFlightService"
     }
     private var screenReceiver: BroadcastReceiver? = null
 

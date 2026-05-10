@@ -7,5 +7,6 @@ class ElAlDemoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         LiveUpdateManager.ensureChannel(this)
+        LiveUpdateManager.restoreFromPrefs(this)
     }
 }
