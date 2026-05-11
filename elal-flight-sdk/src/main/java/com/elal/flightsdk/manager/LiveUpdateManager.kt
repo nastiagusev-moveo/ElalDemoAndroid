@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.elal.flightsdk.utils.Logger
+import com.elal.flightsdk.utils.combineLabelAndValue
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.toHhMmSs
@@ -138,8 +139,8 @@ object LiveUpdateManager {
             Stage.IN_FLIGHT -> {
                 cancelDepartedTimer()
                 if (selfUpdateState == null) {
-                    setupRealtimeClocks(state)
-                    startSelfUpdate(state)
+                    val stillInFlight = setupRealtimeClocks(state)
+                    if (stillInFlight) startSelfUpdate(state) else selfUpdateState = state
                     androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
                 } else {
                     selfUpdateState = state
@@ -293,8 +294,7 @@ object LiveUpdateManager {
         appContext = context.applicationContext
         when (state.stage) {
             Stage.IN_FLIGHT -> {
-                setupRealtimeClocks(state)
-                startSelfUpdate(state)
+                if (setupRealtimeClocks(state)) startSelfUpdate(state) else selfUpdateState = state
             }
             Stage.DEPARTED -> {
                 val targetMs = JourneyPrefs.loadInFlightTargetMs(context)
@@ -307,8 +307,7 @@ object LiveUpdateManager {
                         currentState = inFlightState
                         _stateFlow.value = inFlightState
                         JourneyPrefs.saveState(context, inFlightState)
-                        setupRealtimeClocks(inFlightState)
-                        startSelfUpdate(inFlightState)
+                        if (setupRealtimeClocks(inFlightState)) startSelfUpdate(inFlightState) else selfUpdateState = inFlightState
                     } else {
                         log.i("⏱️ RESTORE: DEPARTED timer resuming — ${remainingMs / 1000}s remaining")
                         postInFlightHandlerAfter(remainingMs)
@@ -385,12 +384,24 @@ object LiveUpdateManager {
         return style
     }
 
-    private fun setupRealtimeClocks(state: FlightContentState) {
+    /**
+     * @return true if the flight is still in progress (arrival in the future), false if arrival
+     * has already passed. When false, callers should skip [startSelfUpdate] — the airplane will
+     * sit at full progress because [computeFlightProgress] returns 1.0 when duration <= 0.
+     */
+    private fun setupRealtimeClocks(state: FlightContentState): Boolean {
         val now = wallClockNow()
         val remainingMs = state.arrivalTime.toEpochMilli() - now.toEpochMilli()
         log.d("(Arrival - now) => remainingMs: $remainingMs")
 
-        flightTotalDurationMs = remainingMs.coerceAtLeast(1_000L)
+        if (remainingMs <= 0) {
+            log.d("⚠️ Arrival time already passed (${state.arrivalTime.toHhMmSs()} <= ${now.toHhMmSs()}) — skipping self-update tick, airplane parked at end of bar")
+            flightTotalDurationMs = 0L
+            flightStartRealtimeMs = 0L
+            return false
+        }
+
+        flightTotalDurationMs = remainingMs
         flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
         log.d("flightTotalDurationMs: $flightTotalDurationMs")
         log.i(
@@ -403,6 +414,7 @@ object LiveUpdateManager {
             "\n   ─────────────────────────────────────" +
             "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
         )
+        return true
     }
 
     private fun calculateNextTickInterval(): Long {
@@ -420,24 +432,21 @@ object LiveUpdateManager {
     private fun buildContentText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
         return when (state.stage) {
-            Stage.CHECK_IN    -> context.getString(R.string.notif_content_check_in, bidi.unicodeWrap(state.checkInCounters.orDash()))
-            Stage.GATE_READY  -> context.getString(R.string.notif_content_gate_ready, bidi.unicodeWrap(state.gate.orDash()))
-            Stage.BOARDING    -> context.getString(R.string.notif_content_boarding, bidi.unicodeWrap(state.boardingZone.orDash()))
-            Stage.LAST_CALL   -> context.getString(R.string.notif_content_last_call, bidi.unicodeWrap(state.gate.orDash()))
-            Stage.DEPARTED    -> context.getString(R.string.notif_content_departed, bidi.unicodeWrap(state.departureTime.toFormattedTime()))
-            Stage.IN_FLIGHT  -> context.getString(R.string.notif_content_in_flight, bidi.unicodeWrap(state.arrivalTime.toFormattedTime()))
-            Stage.LANDED      ->
-                if (state.direction == Direction.ARRIVAL)
-                    context.getString(R.string.notif_content_arrival_baggage, bidi.unicodeWrap(state.terminal.orDash()))
-                else
-                    context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
-            Stage.BAGGAGE     -> context.getString(R.string.notif_content_arrival_baggage, bidi.unicodeWrap(state.baggageCarousel.orDash()))
+            Stage.CHECK_IN    -> combineLabelAndValue(state.deskTitle, state.checkInCounters)
+            Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate)
+            Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
+            Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
+            Stage.DEPARTED    -> state.title
+            Stage.IN_FLIGHT   -> state.title
+            Stage.LANDED      -> combineLabelAndValue(state.title, state.baggageCarousel)
+            Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
             Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
             Stage.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
             Stage.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
         }
     }
 
+    // Not Used, but kept for future use
     private fun buildChipText(context: Context, state: FlightContentState): String = when (state.stage) {
         Stage.CHECK_IN    -> state.checkInCounters ?: context.getString(R.string.notif_chip_check_in)
         Stage.GATE_READY,

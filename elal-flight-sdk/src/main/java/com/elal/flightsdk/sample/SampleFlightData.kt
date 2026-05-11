@@ -5,6 +5,7 @@ import com.elal.flightsdk.model.Carrier
 import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
 import com.elal.flightsdk.model.Stage
+import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.wallClockNow
 import java.time.temporal.ChronoUnit
 
@@ -23,7 +24,7 @@ object SampleFlightData {
                 departureTime = now,
                 arrivalTime = now.plus(5, ChronoUnit.MINUTES).plus(30, ChronoUnit.SECONDS),
                 stage = Stage.CHECK_IN,
-                language = AppLanguage.EN
+                language = AppLanguage.HE
             )
         }
 
@@ -40,7 +41,7 @@ object SampleFlightData {
                 departureTime = now,
                 arrivalTime = now.plus(5, ChronoUnit.MINUTES).plus(30, ChronoUnit.SECONDS),
                 stage = Stage.CHECK_IN,
-                language = AppLanguage.EN
+                language = AppLanguage.HE
             )
         }
 
@@ -48,14 +49,16 @@ object SampleFlightData {
     val journeySimulationSequence: List<FlightContentState>
         get() {
             val base = departureBase
+            val depTime = base.departureTime.toFormattedTime()
+            val arrTime = base.arrivalTime.toFormattedTime()
             return listOf(
-                base.copy(stage = Stage.CHECK_IN,   checkInCounters = "D78-99"),
-                base.copy(stage = Stage.GATE_READY,  gate = "D3", terminal = "3"),
-                base.copy(stage = Stage.BOARDING,    gate = "D3", terminal = "3", boardingZone = "Zone 1"),
-                base.copy(stage = Stage.LAST_CALL,   gate = "D3", terminal = "3"),
-                base.copy(stage = Stage.DEPARTED),
-                base.copy(stage = Stage.IN_FLIGHT),
-                base.copy(stage = Stage.LANDED,      terminal = "1"),
+                base.copy(stage = Stage.CHECK_IN,   deskTitle = "דלפקי צ'ק-אין:",                   checkInCounters = "D78-99"),
+                base.copy(stage = Stage.GATE_READY, gateTitle = "שער:",                             gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.BOARDING,   title = "האזור שלך:",                            gate = "D3", terminal = "3", boardingZone = "Zone 1"),
+                base.copy(stage = Stage.LAST_CALL,  title = "לא ניתן לעלות לאחר סגירת השער:",        gate = "D3", terminal = "3"),
+                base.copy(stage = Stage.DEPARTED,   title = "המראה ב-$depTime"),
+                base.copy(stage = Stage.IN_FLIGHT,  title = "נחיתה ב-$arrTime"),
+                base.copy(stage = Stage.LANDED,     title = "ברוכים הבאים ל-${base.destination}",   terminal = "1"),
                 base.copy(stage = Stage.COMPLETED)
             )
         }
@@ -64,15 +67,17 @@ object SampleFlightData {
     val arrivalSimulationSequence: List<FlightContentState>
         get() {
             val base = arrivalBase
+            val depTime = base.departureTime.toFormattedTime()
+            val arrTime = base.arrivalTime.toFormattedTime()
             return listOf(
-                base.copy(stage = Stage.CHECK_IN,   checkInCounters = "B12-18"),
-                base.copy(stage = Stage.GATE_READY,  gate = "B7", terminal = "4"),
-                base.copy(stage = Stage.BOARDING,    gate = "B7", terminal = "4", boardingZone = "Zone 1"),
-                base.copy(stage = Stage.LAST_CALL,   gate = "B7", terminal = "4"),
-                base.copy(stage = Stage.DEPARTED),
-                base.copy(stage = Stage.IN_FLIGHT),
-                base.copy(stage = Stage.LANDED,      terminal = "3"),
-                base.copy(stage = Stage.BAGGAGE,     baggageCarousel = "12"),
+                base.copy(stage = Stage.CHECK_IN,   deskTitle = "דלפקי צ'ק-אין:",                   checkInCounters = "B12-18"),
+                base.copy(stage = Stage.GATE_READY, gateTitle = "שער:",                             gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.BOARDING,   title = "האזור שלך:",                            gate = "B7", terminal = "4", boardingZone = "Zone 1"),
+                base.copy(stage = Stage.LAST_CALL,  title = "לא ניתן לעלות לאחר סגירת השער:",        gate = "B7", terminal = "4"),
+                base.copy(stage = Stage.DEPARTED,   title = "המראה ב-$depTime"),
+                base.copy(stage = Stage.IN_FLIGHT,  title = "נחיתה ב-$arrTime"),
+                base.copy(stage = Stage.LANDED,     title = "כבודה תגיע לקרוסלה:",                   terminal = "3", baggageCarousel = "3"),
+                base.copy(stage = Stage.BAGGAGE,    title = "כבודה תגיע לקרוסלה:",                   baggageCarousel = "12"),
                 base.copy(stage = Stage.COMPLETED)
             )
         }

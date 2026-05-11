@@ -1,11 +1,17 @@
 package com.elal.flightsdk.utils
 
+import androidx.core.text.BidiFormatter
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 fun String?.orDash(): String = this ?: "--"
+
+fun combineLabelAndValue(label: String, value: String?): String = listOfNotNull(
+    label.takeIf { it.isNotBlank() },
+    value?.takeIf { it.isNotBlank() }?.let { BidiFormatter.getInstance().unicodeWrap(it) }
+).joinToString(" ")
 
 fun wallClockNow(): Instant = LocalDateTime.now().toInstant(ZoneOffset.UTC)
 

@@ -16,13 +16,11 @@ import com.elal.flightsdk.model.Stage
 import com.elal.flightsdk.sample.SampleFlightData
 import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
-import com.elal.flightsdk.utils.wallClockNow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class JourneyViewModel(application: Application) : AndroidViewModel(application) {
@@ -45,13 +43,11 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private var currentStateIndex = 0
     private var activeSequence: List<FlightContentState> = SampleFlightData.journeySimulationSequence
     private var simulationJob: Job? = null
-    private var arrivalWatchJob: Job? = null
 
     init {
         viewModelScope.launch {
             LiveUpdateManager.stateFlow.collect { state ->
                 if (state == null) {
-                    stopArrivalWatch()
                     _isActivityActive.value = false
                     _isSimulating.value = false
                     _statusText.value = UiText.StringResource(R.string.no_active_activity)
@@ -59,7 +55,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 } else {
                     _isActivityActive.value = true
                     updateUI(state)
-                    manageArrivalWatch(state)
                 }
             }
         }
@@ -91,7 +86,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         LiveUpdateManager.updateJourney(getApplication(), state)
             .onSuccess {
                 if (state.stage == Stage.COMPLETED) {
-                    stopArrivalWatch()
                     _isActivityActive.value = false
                 }
                 _errorMessage.value = null
@@ -101,7 +95,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     fun endActivity() {
         if (isDebuggable) DebugNextStageReceiver.teardown() // TODO: DEBUG - Remove before release
-        stopArrivalWatch()
         LiveUpdateManager.endJourney(getApplication())
         _isActivityActive.value = false
         _isSimulating.value = false
@@ -209,35 +202,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         is LiveUpdateError.FailedToStart           -> UiText.StringResource(R.string.error_failed_to_start, cause.message ?: "")
     }
 
-    /**
-     * Auto-advances to LANDED once the arrival time is reached while in IN_FLIGHT stage.
-     */
-    private fun manageArrivalWatch(state: FlightContentState) {
-        if (state.stage == Stage.IN_FLIGHT) {
-            startArrivalWatch(state)
-        } else {
-            stopArrivalWatch()
-        }
-    }
-
-    private fun startArrivalWatch(state: FlightContentState) {
-        stopArrivalWatch()
-        arrivalWatchJob = viewModelScope.launch {
-            while (isActive) {
-                delay(ARRIVAL_CHECK_INTERVAL_MS)
-                if (wallClockNow() >= state.arrivalTime) {
-                    updateToNextState()
-                    break
-                }
-            }
-        }
-    }
-
-    private fun stopArrivalWatch() {
-        arrivalWatchJob?.cancel()
-        arrivalWatchJob = null
-    }
-
     private fun updateUI(state: FlightContentState) {
         _statusText.value = when (state.stage) {
             Stage.CHECK_IN         -> UiText.StringResource(R.string.status_check_in)
@@ -267,7 +231,4 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    companion object {
-        private const val ARRIVAL_CHECK_INTERVAL_MS = 2_000L
-    }
 }
