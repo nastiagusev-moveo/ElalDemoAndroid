@@ -22,7 +22,7 @@ object SampleFlightData {
                 origin = "TLV",
                 destination = "JFK",
                 departureTime = now,
-                arrivalTime = now.plus(5, ChronoUnit.MINUTES).plus(30, ChronoUnit.SECONDS),
+                arrivalTime = now.plus(3, ChronoUnit.HOURS).plus(30, ChronoUnit.MINUTES),
                 stage = Stage.CHECK_IN,
                 language = AppLanguage.HE
             )
@@ -39,7 +39,7 @@ object SampleFlightData {
                 origin = "JFK",
                 destination = "TLV",
                 departureTime = now,
-                arrivalTime = now.plus(5, ChronoUnit.MINUTES).plus(30, ChronoUnit.SECONDS),
+                arrivalTime = now.plus(3, ChronoUnit.MINUTES),
                 stage = Stage.CHECK_IN,
                 language = AppLanguage.HE
             )

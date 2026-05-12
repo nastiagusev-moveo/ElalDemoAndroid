@@ -23,7 +23,8 @@
     <string name="notif_content_boarding">האזור שלך: %s</string>
     <string name="notif_content_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
     <string name="notif_content_departed">המראה ב-%s</string>
-    <string name="notif_content_in_flight">נחיתה ב-%s</string>
+    <string name="notif_content_in_flight">נחיתה בעוד %1$d שעות %2$d דקות</string>
+    <string name="notif_content_landing_soon">נחיתה ברגעים אלה</string>
     <string name="notif_content_arrival_baggage">כבודה תגיע לקרוסלה: %s</string>
     <string name="notif_content_arrival_welcome">ברוכים הבאים ל-%s</string>
     <string name="notif_content_connection_error">נראה שאתה לא מחובר. בדוק את החיבור שלך.</string>

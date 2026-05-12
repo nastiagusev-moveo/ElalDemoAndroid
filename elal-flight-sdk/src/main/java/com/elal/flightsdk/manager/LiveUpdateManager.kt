@@ -129,10 +129,7 @@ object LiveUpdateManager {
 
         when (state.stage) {
             Stage.DEPARTED -> {
-                stopSelfUpdate()
-                cancelDepartedTimer()
-                flightStartRealtimeMs = 0L
-                flightTotalDurationMs = 0L
+                resetFlightTimers()
                 scheduleDepartedToInFlightTimer(context)
                 androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
             }
@@ -148,16 +145,10 @@ object LiveUpdateManager {
                 }
             }
             Stage.LANDED, Stage.BAGGAGE -> {
-                cancelDepartedTimer()
-                stopSelfUpdate()
-                flightStartRealtimeMs = 0L
-                flightTotalDurationMs = 0L
+                resetFlightTimers()
             }
             else -> {
-                cancelDepartedTimer()
-                stopSelfUpdate()
-                flightStartRealtimeMs = 0L
-                flightTotalDurationMs = 0L
+                resetFlightTimers()
                 context.stopService(serviceIntent)
             }
         }
@@ -169,15 +160,12 @@ object LiveUpdateManager {
     fun endJourney(context: Context) {
         if (!isSupported) return
         log.i("endJourney")
-        cancelDepartedTimer()
-        stopSelfUpdate()
+        resetFlightTimers()
         context.stopService(android.content.Intent(context, InFlightService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         JourneyPrefs.clear(context)
         currentState = null
         _stateFlow.value = null
-        flightStartRealtimeMs = 0L
-        flightTotalDurationMs = 0L
         appContext = null
     }
 
@@ -288,7 +276,7 @@ object LiveUpdateManager {
             .build()
     }
 
-    fun restoreFromPrefs(context: Context) {
+    fun restoreFromPrefs(context: Context, startServiceIfActive: Boolean = true) {
         if (!isSupported) return
         val state = JourneyPrefs.loadState(context) ?: return
         currentState = state
@@ -297,6 +285,7 @@ object LiveUpdateManager {
         when (state.stage) {
             Stage.IN_FLIGHT -> {
                 if (setupRealtimeClocks(state)) startSelfUpdate(state) else selfUpdateState = state
+                if (startServiceIfActive) ensureInFlightService(context)
             }
             Stage.DEPARTED -> {
                 val targetMs = JourneyPrefs.loadInFlightTargetMs(context)
@@ -310,14 +299,21 @@ object LiveUpdateManager {
                         _stateFlow.value = inFlightState
                         JourneyPrefs.saveState(context, inFlightState)
                         if (setupRealtimeClocks(inFlightState)) startSelfUpdate(inFlightState) else selfUpdateState = inFlightState
+                        if (startServiceIfActive) ensureInFlightService(context)
                     } else {
                         log.i("⏱️ RESTORE: DEPARTED timer resuming — ${remainingMs / 1000}s remaining")
                         postInFlightHandlerAfter(remainingMs)
+                        if (startServiceIfActive) ensureInFlightService(context)
                     }
                 }
             }
             else -> Unit
         }
+    }
+
+    private fun ensureInFlightService(context: Context) {
+        val intent = android.content.Intent(context, InFlightService::class.java)
+        androidx.core.content.ContextCompat.startForegroundService(context, intent)
     }
 
     /**
@@ -422,7 +418,25 @@ object LiveUpdateManager {
     private fun calculateNextTickInterval(): Long {
         if (flightTotalDurationMs <= 0) return 1_000L
         val onePercentMs = flightTotalDurationMs / 100
-        return onePercentMs.coerceIn(1_000L, 300_000L)
+        return onePercentMs.coerceIn(1_000L, 60_000L)
+    }
+
+    private fun buildInFlightCountdown(context: Context, state: FlightContentState): String {
+        val remainingMs = state.arrivalTime.toEpochMilli() - wallClockNow().toEpochMilli()
+        if (remainingMs <= 0L) {
+            return context.getString(R.string.notif_content_landing_soon)
+        }
+        val totalMinutes = remainingMs / 60_000L
+        val hours = (totalMinutes / 60).toInt()
+        val minutes = (totalMinutes % 60).toInt()
+        return context.getString(R.string.notif_content_in_flight, hours, minutes)
+    }
+
+    private fun resetFlightTimers() {
+        cancelDepartedTimer()
+        stopSelfUpdate()
+        flightStartRealtimeMs = 0L
+        flightTotalDurationMs = 0L
     }
 
     private fun computeFlightProgress(): Double {
@@ -459,7 +473,7 @@ object LiveUpdateManager {
             Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
             Stage.DEPARTED    -> state.title
-            Stage.IN_FLIGHT   -> state.title
+            Stage.IN_FLIGHT   -> buildInFlightCountdown(context, state)
             Stage.LANDED      -> combineLabelAndValue(state.title, state.baggageCarousel)
             Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
             Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))

@@ -36,7 +36,7 @@ class InFlightService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!LiveUpdateManager.isActive) {
-            LiveUpdateManager.restoreFromPrefs(this)
+            LiveUpdateManager.restoreFromPrefs(this, startServiceIfActive = false)
         }
         val notification = LiveUpdateManager.buildCurrentNotification(this)
         if (notification != null) {
