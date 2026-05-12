@@ -430,7 +430,8 @@ object LiveUpdateManager {
         val hours = (totalMinutes / 60).toInt()
         val minutes = (totalMinutes % 60).toInt()
         return if (hours == 0) {
-            context.getString(R.string.notif_content_in_flight_minutes, minutes)
+            val displayMinutes = minutes.coerceAtLeast(1)
+            context.getString(R.string.notif_content_in_flight_minutes, displayMinutes)
         } else {
             context.getString(R.string.notif_content_in_flight, hours, minutes)
         }
