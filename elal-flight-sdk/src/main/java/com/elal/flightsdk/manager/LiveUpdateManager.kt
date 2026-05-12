@@ -245,7 +245,9 @@ object LiveUpdateManager {
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
             .setRequestPromotedOngoing(true)
-        builder.setShortCriticalText(buildChipText(context, state))
+
+        builder
+            //.setShortCriticalText(buildChipText(context, state)) // Not Used, but kept for future use
             .setShowWhen(false)
             .setOnlyAlertOnce(
                 isSelfUpdate ||
@@ -429,38 +431,6 @@ object LiveUpdateManager {
         return (elapsed.toDouble() / flightTotalDurationMs).coerceIn(0.0, 1.0)
     }
 
-    private fun buildContentText(context: Context, state: FlightContentState): String {
-        val bidi = BidiFormatter.getInstance()
-        return when (state.stage) {
-            Stage.CHECK_IN    -> combineLabelAndValue(state.deskTitle, state.checkInCounters)
-            Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate)
-            Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
-            Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
-            Stage.DEPARTED    -> state.title
-            Stage.IN_FLIGHT   -> state.title
-            Stage.LANDED      -> combineLabelAndValue(state.title, state.baggageCarousel)
-            Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
-            Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
-            Stage.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
-            Stage.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
-        }
-    }
-
-    // Not Used, but kept for future use
-    private fun buildChipText(context: Context, state: FlightContentState): String = when (state.stage) {
-        Stage.CHECK_IN    -> state.checkInCounters ?: context.getString(R.string.notif_chip_check_in)
-        Stage.GATE_READY,
-        Stage.BOARDING,
-        Stage.LAST_CALL   -> state.gate ?: context.getString(R.string.notif_chip_boarding)
-        Stage.DEPARTED    -> context.getString(R.string.notif_chip_departed)
-        Stage.IN_FLIGHT  -> context.getString(R.string.notif_chip_in_flight)
-        Stage.LANDED,
-        Stage.BAGGAGE,
-        Stage.COMPLETED   -> context.getString(R.string.notif_chip_arrival)
-        Stage.CONNECTION_ERROR -> context.getString(R.string.notif_chip_connection_error)
-        Stage.GENERAL_ERROR    -> context.getString(R.string.notif_chip_general_error)
-    }
-
     private fun buildStatusBarText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
         val depTime = state.departureTime.toFormattedTime()
@@ -480,4 +450,36 @@ object LiveUpdateManager {
             Stage.GENERAL_ERROR    -> context.getString(R.string.notif_statusbar_general_error)
         }
     }
+
+    private fun buildContentText(context: Context, state: FlightContentState): String {
+        val bidi = BidiFormatter.getInstance()
+        return when (state.stage) {
+            Stage.CHECK_IN    -> combineLabelAndValue(state.deskTitle, state.checkInCounters)
+            Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate)
+            Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
+            Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
+            Stage.DEPARTED    -> state.title
+            Stage.IN_FLIGHT   -> state.title
+            Stage.LANDED      -> combineLabelAndValue(state.title, state.baggageCarousel)
+            Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
+            Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
+            Stage.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
+            Stage.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
+        }
+    }
+
+    // Not Used, but kept for future use
+//    private fun buildChipText(context: Context, state: FlightContentState): String = when (state.stage) {
+//        Stage.CHECK_IN    -> state.checkInCounters ?: context.getString(R.string.notif_chip_check_in)
+//        Stage.GATE_READY,
+//        Stage.BOARDING,
+//        Stage.LAST_CALL   -> state.gate ?: context.getString(R.string.notif_chip_boarding)
+//        Stage.DEPARTED    -> context.getString(R.string.notif_chip_departed)
+//        Stage.IN_FLIGHT  -> context.getString(R.string.notif_chip_in_flight)
+//        Stage.LANDED,
+//        Stage.BAGGAGE,
+//        Stage.COMPLETED   -> context.getString(R.string.notif_chip_arrival)
+//        Stage.CONNECTION_ERROR -> context.getString(R.string.notif_chip_connection_error)
+//        Stage.GENERAL_ERROR    -> context.getString(R.string.notif_chip_general_error)
+//    }
 }
