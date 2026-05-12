@@ -429,7 +429,11 @@ object LiveUpdateManager {
         val totalMinutes = remainingMs / 60_000L
         val hours = (totalMinutes / 60).toInt()
         val minutes = (totalMinutes % 60).toInt()
-        return context.getString(R.string.notif_content_in_flight, hours, minutes)
+        return if (hours == 0) {
+            context.getString(R.string.notif_content_in_flight_minutes, minutes)
+        } else {
+            context.getString(R.string.notif_content_in_flight, hours, minutes)
+        }
     }
 
     private fun resetFlightTimers() {

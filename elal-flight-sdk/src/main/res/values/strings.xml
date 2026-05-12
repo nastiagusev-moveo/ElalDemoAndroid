@@ -24,6 +24,7 @@
     <string name="notif_content_last_call">No boarding after gate closes: %s</string>
     <string name="notif_content_departed">Departed at %s</string>
     <string name="notif_content_in_flight">Landing in %1$dh %2$dmin</string>
+    <string name="notif_content_in_flight_minutes">Landing in %1$dmin</string>
     <string name="notif_content_landing_soon">Landing soon</string>
     <string name="notif_content_arrival_baggage">Baggage claim will be at carousel: %s</string>
     <string name="notif_content_arrival_welcome">Welcome to %s</string>
