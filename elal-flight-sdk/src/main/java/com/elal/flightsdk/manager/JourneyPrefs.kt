@@ -11,7 +11,6 @@ internal object JourneyPrefs {
 
     private const val PREFS_NAME = "journey_prefs"
     private const val KEY_STATE = "state"
-    private const val KEY_IN_FLIGHT_TARGET_MS = "in_flight_target_ms"
 
     private val log = Logger("JourneyPrefs")
 
@@ -33,17 +32,6 @@ internal object JourneyPrefs {
             context.prefs().edit { clear() }
             null
         }
-    }
-
-    fun saveInFlightTargetMs(context: Context, targetMs: Long) {
-        context.prefs().edit { putLong(KEY_IN_FLIGHT_TARGET_MS, targetMs) }
-    }
-
-    fun loadInFlightTargetMs(context: Context): Long =
-        context.prefs().getLong(KEY_IN_FLIGHT_TARGET_MS, 0L)
-
-    fun clearInFlightTargetMs(context: Context) {
-        context.prefs().edit { remove(KEY_IN_FLIGHT_TARGET_MS) }
     }
 
     fun clear(context: Context) {

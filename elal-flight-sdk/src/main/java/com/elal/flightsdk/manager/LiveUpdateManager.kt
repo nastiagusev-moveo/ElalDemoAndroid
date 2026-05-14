@@ -52,12 +52,10 @@ object LiveUpdateManager {
     val isActive: Boolean get() = currentState != null
     private var flightStartRealtimeMs: Long = 0L
     private var flightTotalDurationMs: Long = 0L
-    private const val DEPARTED_TO_IN_FLIGHT_DELAY_MS = 20 * 60 * 1000L  // 20 minutes
 
     private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
     private var selfUpdateState: FlightContentState? = null
-    private var departedInFlightRunnable: Runnable? = null
     private val selfUpdateRunnable: Runnable = object : Runnable {
         override fun run() {
             val ctx = appContext ?: return
@@ -129,12 +127,6 @@ object LiveUpdateManager {
 
         when (state.stage) {
             Stage.DEPARTED -> {
-                resetFlightTimers()
-                scheduleDepartedToInFlightTimer(context)
-                androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
-            }
-            Stage.IN_FLIGHT -> {
-                cancelDepartedTimer()
                 if (selfUpdateState == null) {
                     val stillInFlight = setupRealtimeClocks(state)
                     if (stillInFlight) startSelfUpdate(state) else selfUpdateState = state
@@ -181,34 +173,6 @@ object LiveUpdateManager {
         handler.removeCallbacks(selfUpdateRunnable)
         selfUpdateState = null
         log.i("🛑 SELF-UPDATE NOT ACTIVE")
-    }
-
-    private fun scheduleDepartedToInFlightTimer(context: Context) {
-        val targetMs = System.currentTimeMillis() + DEPARTED_TO_IN_FLIGHT_DELAY_MS
-        JourneyPrefs.saveInFlightTargetMs(context, targetMs)
-        postInFlightHandlerAfter(DEPARTED_TO_IN_FLIGHT_DELAY_MS)
-        log.d("⏱️ DEPARTED timer scheduled: IN_FLIGHT will fire in ${DEPARTED_TO_IN_FLIGHT_DELAY_MS / 1000}s")
-    }
-
-    private fun postInFlightHandlerAfter(delayMs: Long) {
-        val runnable = Runnable {
-            departedInFlightRunnable = null
-            val ctx = appContext ?: return@Runnable
-            val latestState = currentState ?: return@Runnable
-            log.d("⏱️ DEPARTED→IN_FLIGHT: timer fired — triggering IN_FLIGHT internally")
-            updateJourney(ctx, latestState.copy(stage = Stage.IN_FLIGHT))
-        }
-        departedInFlightRunnable = runnable
-        handler.postDelayed(runnable, delayMs)
-    }
-
-    private fun cancelDepartedTimer() {
-        departedInFlightRunnable?.let {
-            handler.removeCallbacks(it)
-            log.d("⏱️ DEPARTED timer cancelled")
-        }
-        departedInFlightRunnable = null
-        appContext?.let { JourneyPrefs.clearInFlightTargetMs(it) }
     }
 
     fun pauseTicks() {
@@ -283,29 +247,9 @@ object LiveUpdateManager {
         _stateFlow.value = state
         appContext = context.applicationContext
         when (state.stage) {
-            Stage.IN_FLIGHT -> {
+            Stage.DEPARTED -> {
                 if (setupRealtimeClocks(state)) startSelfUpdate(state) else selfUpdateState = state
                 if (startServiceIfActive) ensureInFlightService(context)
-            }
-            Stage.DEPARTED -> {
-                val targetMs = JourneyPrefs.loadInFlightTargetMs(context)
-                if (targetMs > 0L) {
-                    val remainingMs = targetMs - System.currentTimeMillis()
-                    if (remainingMs <= 0) {
-                        log.i("⏱️ RESTORE: DEPARTED timer already expired — firing IN_FLIGHT immediately")
-                        JourneyPrefs.clearInFlightTargetMs(context)
-                        val inFlightState = state.copy(stage = Stage.IN_FLIGHT)
-                        currentState = inFlightState
-                        _stateFlow.value = inFlightState
-                        JourneyPrefs.saveState(context, inFlightState)
-                        if (setupRealtimeClocks(inFlightState)) startSelfUpdate(inFlightState) else selfUpdateState = inFlightState
-                        if (startServiceIfActive) ensureInFlightService(context)
-                    } else {
-                        log.i("⏱️ RESTORE: DEPARTED timer resuming — ${remainingMs / 1000}s remaining")
-                        postInFlightHandlerAfter(remainingMs)
-                        if (startServiceIfActive) ensureInFlightService(context)
-                    }
-                }
             }
             else -> Unit
         }
@@ -320,11 +264,11 @@ object LiveUpdateManager {
      * Segment layout — always exactly 3 segments, never changes:
      *  seg0 (short) + seg1 (short) + seg2 (long / flight path)
      *
-     * Step 1 – CHECK_IN:                   progress=0        → all grey,     no tracker
-     * Step 2 – GATE_READY, BOARDING, LAST_CALL:       progress=seg0     → seg0 blue,   no tracker
-     * Step 3 – DEPARTED (start):           progress=seg0+1   → seg0+1 blue, airplane at start
-     * Step 4 – IN_FLIGHT (in-flight):     progress grows    → blue trail,  airplane moves
-     * Step 5 – LANDED, BAGGAGE:            progress=max      → all blue,    landing icon
+     * Step 1 – CHECK_IN:                              progress=0           → all grey,         no tracker
+     * Step 2 – GATE_READY, BOARDING:                  progress=seg0        → seg0 blue,        no tracker
+     * Step 3 – LAST_CALL (ready to fly):              progress=flightStart → seg0+seg1 blue,   airplane at start (takeoff icon)
+     * Step 4 – DEPARTED (in-flight):                  progress grows       → blue trail,       airplane moves
+     * Step 5 – LANDED, BAGGAGE:                       progress=max         → all blue,         landing icon
      */
     private fun buildProgressStyle(
         context: Context,
@@ -339,8 +283,8 @@ object LiveUpdateManager {
         val progressIndex = when (state.stage) {
             Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR      -> -1
             Stage.CHECK_IN                                   ->  0
-            Stage.GATE_READY, Stage.BOARDING, Stage.LAST_CALL ->  1
-            Stage.DEPARTED, Stage.IN_FLIGHT                 ->  2
+            Stage.GATE_READY, Stage.BOARDING                 ->  1
+            Stage.LAST_CALL, Stage.DEPARTED                  ->  2
             Stage.LANDED, Stage.BAGGAGE                      ->  4
             Stage.COMPLETED                                  ->  4
         }
@@ -354,15 +298,15 @@ object LiveUpdateManager {
         )
 
         val progress: Int = when {
-            state.stage == Stage.IN_FLIGHT -> {
+            state.stage == Stage.DEPARTED -> {
                 val flightProgress = computeFlightProgress()
                 val filled = (flightProgress * longSegLen).toInt().coerceIn(0, longSegLen - 1)
                 if (uiDebugMode) log.d("[AIRPLANE] fill=$filled / $longSegLen | progressBar=${flightStart + filled} / $PROGRESS_MAX")
                 flightStart + filled
             }
             progressIndex >= 4 -> PROGRESS_MAX      // LANDED/BAGGAGE — end of bar
-            progressIndex >= 2 -> flightStart       // DEPARTED/IN_FLIGHT — airplane at path start
-            progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING/LAST_CALL — end of seg0
+            progressIndex >= 2 -> flightStart       // LAST_CALL — airplane at path start
+            progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING — end of seg0
             else               -> 0                 // CHECK_IN / errors
         }
 
@@ -372,8 +316,8 @@ object LiveUpdateManager {
             .setStyledByProgress(true)
 
         val trackerIcon = when (state.stage) {
-            Stage.DEPARTED             -> R.drawable.ic_airplane_taking_off_left_2
-            Stage.IN_FLIGHT           -> R.drawable.ic_airplane_move_left_2
+            Stage.LAST_CALL            -> R.drawable.ic_airplane_taking_off_left_2
+            Stage.DEPARTED             -> R.drawable.ic_airplane_move_left_2
             Stage.LANDED, Stage.BAGGAGE -> R.drawable.ic_airplane_land_left_2
             else                       -> R.drawable.ic_airplane_placeholder_transparent
         }
@@ -421,7 +365,7 @@ object LiveUpdateManager {
         return onePercentMs.coerceIn(1_000L, 60_000L)
     }
 
-    private fun buildInFlightCountdown(context: Context, state: FlightContentState): String {
+    private fun buildDepartedCountdown(context: Context, state: FlightContentState): String {
         val remainingMs = state.arrivalTime.toEpochMilli() - wallClockNow().toEpochMilli()
         if (remainingMs <= 0L) {
             return context.getString(R.string.notif_content_landing_soon)
@@ -431,14 +375,13 @@ object LiveUpdateManager {
         val minutes = (totalMinutes % 60).toInt()
         return if (hours == 0) {
             val displayMinutes = minutes.coerceAtLeast(1)
-            context.getString(R.string.notif_content_in_flight_minutes, displayMinutes)
+            context.getString(R.string.notif_content_departed_minutes, displayMinutes)
         } else {
-            context.getString(R.string.notif_content_in_flight, hours, minutes)
+            context.getString(R.string.notif_content_departed, hours, minutes)
         }
     }
 
     private fun resetFlightTimers() {
-        cancelDepartedTimer()
         stopSelfUpdate()
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
@@ -460,8 +403,7 @@ object LiveUpdateManager {
             Stage.GATE_READY  -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_gate_ready)}"
             Stage.BOARDING    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding)}"
             Stage.LAST_CALL   -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_last_call)}"
-            Stage.DEPARTED    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_departed)}"
-            Stage.IN_FLIGHT  -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_in_flight)}"
+            Stage.DEPARTED    -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_departed)}"
             Stage.LANDED      -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_landed)}"
             Stage.BAGGAGE     -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_baggage)}"
             Stage.COMPLETED   -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_completed)}"
@@ -477,8 +419,7 @@ object LiveUpdateManager {
             Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate)
             Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
-            Stage.DEPARTED    -> state.title
-            Stage.IN_FLIGHT   -> buildInFlightCountdown(context, state)
+            Stage.DEPARTED    -> buildDepartedCountdown(context, state)
             Stage.LANDED      -> combineLabelAndValue(state.title, state.baggageCarousel)
             Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
             Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
@@ -494,7 +435,6 @@ object LiveUpdateManager {
 //        Stage.BOARDING,
 //        Stage.LAST_CALL   -> state.gate ?: context.getString(R.string.notif_chip_boarding)
 //        Stage.DEPARTED    -> context.getString(R.string.notif_chip_departed)
-//        Stage.IN_FLIGHT  -> context.getString(R.string.notif_chip_in_flight)
 //        Stage.LANDED,
 //        Stage.BAGGAGE,
 //        Stage.COMPLETED   -> context.getString(R.string.notif_chip_arrival)
