@@ -184,7 +184,7 @@ object LiveUpdateManager {
         handler.post(selfUpdateRunnable)
     }
 
-    private fun buildNotification(
+    private fun buildNotification( // android's native notification object
         context: Context,
         state: FlightContentState,
         isSelfUpdate: Boolean = false
@@ -415,12 +415,16 @@ object LiveUpdateManager {
     private fun buildContentText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
         return when (state.stage) {
-            Stage.CHECK_IN    -> combineLabelAndValue(state.deskTitle, state.checkInCounters)
+            Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters)
             Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate)
             Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
-            Stage.LANDED      -> combineLabelAndValue(state.title, state.baggageCarousel)
+            Stage.LANDED      -> if (state.baggageCarousel.isNullOrBlank()) {
+                combineLabelAndValue(state.title, "")
+            } else {
+                combineLabelAndValue(state.message, state.baggageCarousel)
+            }
             Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
             Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
             Stage.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
