@@ -60,7 +60,7 @@ class FlightMessagingService : FirebaseMessagingService() {
 private fun Map<String, String>.toFlightContentState(fallback: FlightContentState? = null): FlightContentState =
     FlightContentState(
         activityId = get("activityId")?.takeIf { it.isNotEmpty() } ?: fallback?.activityId ?: "",
-        flightNumber = get("flightNumber")?.takeIf { it.isNotEmpty() } ?: fallback?.flightNumber ?: "",
+        flightNumber = get("flightNumber")?.takeIf { it.isNotEmpty() } ?: fallback?.flightNumber?.takeIf { it.isNotEmpty() } ?: "--",
         flightDate = get("flightDate")?.takeIf { it.isNotEmpty() } ?: fallback?.flightDate ?: "",
         direction = get("direction")?.takeIf { it.isNotEmpty() }
                             ?.let { Direction.valueOf(it.uppercase()) }
@@ -79,19 +79,20 @@ private fun Map<String, String>.toFlightContentState(fallback: FlightContentStat
         arrivalTime = get("arrivalTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
                             ?: fallback?.arrivalTime
                             ?: parseServerTime(requireField("arrivalTime")),
-        terminal = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal,
-        arrivalTerminal = get("arrivalTerminal")?.takeIf { it.isNotEmpty() } ?: fallback?.arrivalTerminal,
-        gate = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate,
-        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() } ?: fallback?.baggageCarousel,
-        checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters ?: "--",
-        boardingZone = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone,
+        terminal = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal?.takeIf { it.isNotEmpty() } ?: "--",
+        arrivalTerminal = get("arrivalTerminal")?.takeIf { it.isNotEmpty() } ?: fallback?.arrivalTerminal?.takeIf { it.isNotEmpty() } ?: "--",
+        gate = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate?.takeIf { it.isNotEmpty() } ?: "--",
+        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() } ?: fallback?.baggageCarousel?.takeIf { it.isNotEmpty() } ?: "--",
+        checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters?.takeIf { it.isNotEmpty() } ?: "--",
+        boardingZone = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone?.takeIf { it.isNotEmpty() } ?: "--",
         stage = Stage.valueOf(requireField("stage").uppercase()),
         progressFraction = get("progressFraction")?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()
                             ?: fallback?.progressFraction
                             ?: 0.0,
-        flightStatus = get("flightStatus")?.takeIf { it.isNotEmpty() } ?: fallback?.flightStatus,
+        flightStatus = get("flightStatus")?.takeIf { it.isNotEmpty() } ?: fallback?.flightStatus?.takeIf { it.isNotEmpty() } ?: "--",
         flightStatusText = get("flightStatusText") ?: fallback?.flightStatusText ?: "",
         title = get("title") ?: fallback?.title ?: "",
+        stageTitle = get("stageTitle") ?: fallback?.stageTitle ?: "",
         message = get("message") ?: fallback?.message ?: "",
         terminalTitle = get("terminalTitle") ?: fallback?.terminalTitle ?: "",
         baggageText = get("baggageText") ?: fallback?.baggageText ?: "",

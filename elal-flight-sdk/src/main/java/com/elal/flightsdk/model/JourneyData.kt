@@ -41,6 +41,7 @@ data class FlightContentState(
     val flightStatus: String? = null,
     val flightStatusText: String = "",
     val title: String = "",
+    val stageTitle: String = "",
     val message: String = "",
     val terminalTitle: String = "",
     val baggageText: String = "",

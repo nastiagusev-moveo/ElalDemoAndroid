@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.combineLabelAndValue
+import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.toHhMmSs
 import com.elal.flightsdk.utils.toMmSs
@@ -392,18 +393,13 @@ object LiveUpdateManager {
 
     private fun buildStatusBarText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
-        val depTime = state.departureTime.toFormattedTime()
-        val arrTime = state.arrivalTime.toFormattedTime()
-        val flightNumber = bidi.unicodeWrap(state.flightNumber)
+        val flightNumber = bidi.unicodeWrap(state.flightNumber.orDash())
+        val stageTitle = state.stageTitle.orDash()
         return when (state.stage) {
-            Stage.CHECK_IN    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_check_in)}"
-            Stage.GATE_READY  -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_gate_ready)}"
-            Stage.BOARDING    -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_boarding)}"
-            Stage.LAST_CALL   -> "$flightNumber • $depTime • ${context.getString(R.string.notif_statusbar_last_call)}"
-            Stage.DEPARTED    -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_departed)}"
-            Stage.LANDED      -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_landed)}"
-            Stage.BAGGAGE     -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_baggage)}"
-            Stage.COMPLETED   -> "$flightNumber • $arrTime • ${context.getString(R.string.notif_statusbar_completed)}"
+            Stage.CHECK_IN, Stage.GATE_READY, Stage.BOARDING, Stage.LAST_CALL ->
+                "$flightNumber • ${state.departureTime.toFormattedTime()} • $stageTitle"
+            Stage.DEPARTED, Stage.LANDED, Stage.BAGGAGE, Stage.COMPLETED ->
+                "$flightNumber • ${state.arrivalTime.toFormattedTime()} • $stageTitle"
             Stage.CONNECTION_ERROR -> context.getString(R.string.notif_statusbar_connection_error)
             Stage.GENERAL_ERROR    -> context.getString(R.string.notif_statusbar_general_error)
         }
@@ -412,17 +408,17 @@ object LiveUpdateManager {
     private fun buildContentText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
         return when (state.stage) {
-            Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters)
-            Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate)
-            Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone)
-            Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate)
+            Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters.orDash())
+            Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.gate.orDash())
+            Stage.BOARDING    -> combineLabelAndValue(state.title, state.boardingZone.orDash())
+            Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate.orDash())
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
-            Stage.LANDED      -> if (state.baggageCarousel.isNullOrBlank()) {
-                combineLabelAndValue(state.title, "")
+            Stage.LANDED      -> if (state.baggageCarousel.isNullOrBlank() || state.baggageCarousel == "--") {
+                state.title
             } else {
                 combineLabelAndValue(state.message, state.baggageCarousel)
             }
-            Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel)
+            Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel.orDash())
             Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
             Stage.CONNECTION_ERROR -> context.getString(R.string.notif_content_connection_error)
             Stage.GENERAL_ERROR    -> context.getString(R.string.notif_content_general_error)
