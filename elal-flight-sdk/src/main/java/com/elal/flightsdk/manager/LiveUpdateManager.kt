@@ -2,7 +2,6 @@ package com.elal.flightsdk.manager
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -12,7 +11,6 @@ import androidx.core.app.NotificationCompat.ProgressStyle
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.text.BidiFormatter
 import com.elal.flightsdk.R
-import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
 import com.elal.flightsdk.model.Stage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.combineLabelAndValue
-import com.elal.flightsdk.utils.orDash
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.toHhMmSs
 import com.elal.flightsdk.utils.toMmSs

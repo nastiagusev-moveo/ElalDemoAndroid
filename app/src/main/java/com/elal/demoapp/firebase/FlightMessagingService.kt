@@ -59,54 +59,54 @@ class FlightMessagingService : FirebaseMessagingService() {
 
 private fun Map<String, String>.toFlightContentState(fallback: FlightContentState? = null): FlightContentState =
     FlightContentState(
-        activityId       = get("activityId")?.takeIf { it.isNotEmpty() } ?: fallback?.activityId ?: "",
-        flightNumber     = get("flightNumber")?.takeIf { it.isNotEmpty() } ?: fallback?.flightNumber ?: "",
-        flightDate       = get("flightDate")?.takeIf { it.isNotEmpty() } ?: fallback?.flightDate ?: "",
-        direction        = get("direction")?.takeIf { it.isNotEmpty() }
+        activityId = get("activityId")?.takeIf { it.isNotEmpty() } ?: fallback?.activityId ?: "",
+        flightNumber = get("flightNumber")?.takeIf { it.isNotEmpty() } ?: fallback?.flightNumber ?: "",
+        flightDate = get("flightDate")?.takeIf { it.isNotEmpty() } ?: fallback?.flightDate ?: "",
+        direction = get("direction")?.takeIf { it.isNotEmpty() }
                             ?.let { Direction.valueOf(it.uppercase()) }
                             ?: fallback?.direction
                             ?: Direction.valueOf(requireField("direction").uppercase()),
-        carrier          = get("carrier")?.takeIf { it.isNotEmpty() }
+        carrier = get("carrier")?.takeIf { it.isNotEmpty() }
                             ?.let { Carrier.valueOf(it.uppercase()) }
                             ?: fallback?.carrier
                             ?: Carrier.valueOf(requireField("carrier").uppercase()),
-        pnr              = get("pnr")?.takeIf { it.isNotEmpty() } ?: fallback?.pnr ?: "",
-        origin           = get("origin")?.takeIf { it.isNotEmpty() } ?: fallback?.origin ?: requireField("origin"),
-        destination      = get("destination")?.takeIf { it.isNotEmpty() } ?: fallback?.destination ?: requireField("destination"),
-        departureTime    = get("departureTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
+        pnr = get("pnr")?.takeIf { it.isNotEmpty() } ?: fallback?.pnr ?: "",
+        origin = get("origin")?.takeIf { it.isNotEmpty() } ?: fallback?.origin ?: requireField("origin"),
+        destination = get("destination")?.takeIf { it.isNotEmpty() } ?: fallback?.destination ?: requireField("destination"),
+        departureTime = get("departureTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
                             ?: fallback?.departureTime
                             ?: parseServerTime(requireField("departureTime")),
-        arrivalTime      = get("arrivalTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
+        arrivalTime = get("arrivalTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
                             ?: fallback?.arrivalTime
                             ?: parseServerTime(requireField("arrivalTime")),
-        terminal         = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal,
-        arrivalTerminal  = get("arrivalTerminal")?.takeIf { it.isNotEmpty() } ?: fallback?.arrivalTerminal,
-        gate             = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate,
-        baggageCarousel  = get("baggageCarousel")?.takeIf { it.isNotEmpty() } ?: fallback?.baggageCarousel,
-        checkInCounters  = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters,
-        boardingZone     = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone,
-        stage            = Stage.valueOf(requireField("stage").uppercase()),
+        terminal = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal,
+        arrivalTerminal = get("arrivalTerminal")?.takeIf { it.isNotEmpty() } ?: fallback?.arrivalTerminal,
+        gate = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate,
+        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() } ?: fallback?.baggageCarousel,
+        checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters ?: "--",
+        boardingZone = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone,
+        stage = Stage.valueOf(requireField("stage").uppercase()),
         progressFraction = get("progressFraction")?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()
                             ?: fallback?.progressFraction
                             ?: 0.0,
-        flightStatus     = get("flightStatus")?.takeIf { it.isNotEmpty() } ?: fallback?.flightStatus,
+        flightStatus = get("flightStatus")?.takeIf { it.isNotEmpty() } ?: fallback?.flightStatus,
         flightStatusText = get("flightStatusText") ?: fallback?.flightStatusText ?: "",
-        title            = get("title") ?: fallback?.title ?: "",
-        message          = get("message") ?: fallback?.message ?: "",
-        terminalTitle    = get("terminalTitle") ?: fallback?.terminalTitle ?: "",
-        baggageText      = get("baggageText") ?: fallback?.baggageText ?: "",
-        carryOnText      = get("carryOnText") ?: fallback?.carryOnText ?: "",
-        deskTitle        = get("deskTitle") ?: fallback?.deskTitle ?: "",
-        gateTitle        = get("gateTitle") ?: fallback?.gateTitle ?: "",
-        carouselTitle    = get("carouselTitle") ?: fallback?.carouselTitle ?: "",
-        dismissalDate    = get("dismissalDate")?.takeIf { it.isNotEmpty() }?.let { parseInstant(it) }
+        title = get("title") ?: fallback?.title ?: "",
+        message = get("message") ?: fallback?.message ?: "",
+        terminalTitle = get("terminalTitle") ?: fallback?.terminalTitle ?: "",
+        baggageText = get("baggageText") ?: fallback?.baggageText ?: "",
+        carryOnText = get("carryOnText") ?: fallback?.carryOnText ?: "",
+        deskTitle = get("deskTitle") ?: fallback?.deskTitle ?: "",
+        gateTitle = get("gateTitle") ?: fallback?.gateTitle ?: "",
+        carouselTitle = get("carouselTitle") ?: fallback?.carouselTitle ?: "",
+        dismissalDate = get("dismissalDate")?.takeIf { it.isNotEmpty() }?.let { parseInstant(it) }
                             ?: fallback?.dismissalDate,
-        flightDuration   = get("flightDuration")?.takeIf { it.isNotEmpty() }?.toIntOrNull()
+        flightDuration = get("flightDuration")?.takeIf { it.isNotEmpty() }?.toIntOrNull()
                             ?: fallback?.flightDuration,
-        hasConnections   = get("hasConnections")?.takeIf { it.isNotEmpty() }?.equals("TRUE", ignoreCase = true)
+        hasConnections = get("hasConnections")?.takeIf { it.isNotEmpty() }?.equals("TRUE", ignoreCase = true)
                             ?: fallback?.hasConnections
                             ?: false,
-        language         = get("language")?.uppercase()
+        language = get("language")?.uppercase()
                             ?.let { runCatching { AppLanguage.valueOf(it) }.getOrElse { AppLanguage.EN } }
                             ?: fallback?.language
                             ?: AppLanguage.EN
