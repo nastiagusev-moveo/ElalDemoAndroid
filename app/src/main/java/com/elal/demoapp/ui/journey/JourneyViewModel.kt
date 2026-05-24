@@ -40,6 +40,8 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private val _errorMessage = MutableStateFlow<UiText?>(null)
     val errorMessage: StateFlow<UiText?> = _errorMessage.asStateFlow()
 
+    val watchdogFlow: StateFlow<LiveUpdateManager.WatchdogState?> = LiveUpdateManager.watchdogFlow
+
     private var currentStateIndex = 0
     private var activeSequence: List<FlightContentState> = SampleFlightData.journeySimulationSequence
     private var simulationJob: Job? = null
@@ -58,6 +60,10 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         }
+    }
+
+    fun enableDebugWatchdog() {
+        LiveUpdateManager.setWatchdogDuration(LiveUpdateManager.DEBUG_WATCHDOG_MS)
     }
 
     // TODO: DEBUG - Remove before release (along with all DebugNextStageReceiver usages)

@@ -41,10 +41,22 @@ object LiveUpdateManager {
     private const val SEG0_COMPENSATION = PROGRESS_MAX / 24  // = 10
     private val log = Logger("LiveUpdateManager")
 
+    // Safety net: if no server event arrives within this window, end the journey.
+    // Protects against network outages that would otherwise leave the flow stuck.
+    const val DEFAULT_WATCHDOG_MS: Long = 60L * 1000L
+    const val DEBUG_WATCHDOG_MS: Long = 60L * 1000L
+
     var uiDebugMode: Boolean = false
 
     private val _stateFlow = MutableStateFlow<FlightContentState?>(null)
     val stateFlow: StateFlow<FlightContentState?> = _stateFlow.asStateFlow()
+
+    data class WatchdogState(val startElapsedRealtimeMs: Long, val durationMs: Long)
+
+    private val _watchdogFlow = MutableStateFlow<WatchdogState?>(null)
+    val watchdogFlow: StateFlow<WatchdogState?> = _watchdogFlow.asStateFlow()
+
+    private var watchdogDurationMs: Long = DEFAULT_WATCHDOG_MS
 
     private var currentState: FlightContentState? = null
     val isActive: Boolean get() = currentState != null
@@ -53,6 +65,12 @@ object LiveUpdateManager {
 
     private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
+
+    private val watchdogRunnable = Runnable {
+        log.i("⏰ WATCHDOG FIRED: ${watchdogDurationMs / 1000}s elapsed without server events — ending journey")
+        appContext?.let { endJourney(it) }
+    }
+
     private var selfUpdateState: FlightContentState? = null
     private val selfUpdateRunnable: Runnable = object : Runnable {
         override fun run() {
@@ -102,6 +120,7 @@ object LiveUpdateManager {
         _stateFlow.value = state
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
+        resetWatchdog()
         postNotification(context, state)
         return Result.Success(Unit)
     }
@@ -113,6 +132,7 @@ object LiveUpdateManager {
 
         currentState = state
         JourneyPrefs.saveState(context, state)
+        resetWatchdog()
 
         val serviceIntent = android.content.Intent(context, InFlightService::class.java)
 
@@ -151,12 +171,37 @@ object LiveUpdateManager {
         if (!isSupported) return
         log.i("endJourney")
         resetFlightTimers()
+        stopWatchdog()
         context.stopService(android.content.Intent(context, InFlightService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         JourneyPrefs.clear(context)
         currentState = null
         _stateFlow.value = null
         appContext = null
+    }
+
+    /**
+     * Restart the watchdog. Called on every server event so the journey is killed only
+     * after [watchdogDurationMs] of silence — protecting against stuck flows when network
+     * outages prevent the server's final "end" event from reaching the device.
+     */
+    private fun resetWatchdog() {
+        handler.removeCallbacks(watchdogRunnable)
+        val start = android.os.SystemClock.elapsedRealtime()
+        handler.postDelayed(watchdogRunnable, watchdogDurationMs)
+        _watchdogFlow.value = WatchdogState(start, watchdogDurationMs)
+        log.i("⏰ WATCHDOG RESET: will fire in ${watchdogDurationMs / 1000}s")
+    }
+
+    private fun stopWatchdog() {
+        handler.removeCallbacks(watchdogRunnable)
+        _watchdogFlow.value = null
+    }
+
+    /** Change the watchdog duration. If a watchdog is currently active, restart it with the new value. */
+    fun setWatchdogDuration(durationMs: Long) {
+        watchdogDurationMs = durationMs
+        if (_watchdogFlow.value != null) resetWatchdog()
     }
 
     private fun startSelfUpdate(state: FlightContentState) {
@@ -244,6 +289,7 @@ object LiveUpdateManager {
         currentState = state
         _stateFlow.value = state
         appContext = context.applicationContext
+        resetWatchdog()
         when (state.stage) {
             Stage.DEPARTED -> {
                 if (setupRealtimeClocks(state)) startSelfUpdate(state) else selfUpdateState = state

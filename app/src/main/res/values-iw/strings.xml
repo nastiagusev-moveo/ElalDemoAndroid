@@ -38,6 +38,10 @@
     <string name="detail_connection_error">נראה שאתה לא מחובר. בדוק את החיבור שלך.</string>
     <string name="detail_general_error">אירעה שגיאה</string>
 
+    <!-- Watchdog timer -->
+    <string name="watchdog_label">טיימר בטיחות (כשלא מתקבל אירוע מהשרת)</string>
+    <string name="watchdog_debug_button">דיבאג: קצר את הטיימר לדקה</string>
+
     <!-- Error messages -->
     <string name="error_already_running">עדכון חי כבר פועל</string>
     <string name="error_no_active">אין עדכון חי פעיל לשינוי</string>

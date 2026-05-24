@@ -38,6 +38,10 @@
     <string name="detail_connection_error">You seem to be offline. Check your connection.</string>
     <string name="detail_general_error">Error has occurred</string>
 
+    <!-- Watchdog timer -->
+    <string name="watchdog_label">Safety watchdog (no-server-event timeout)</string>
+    <string name="watchdog_debug_button">Debug: shrink timer to 1 minute</string>
+
     <!-- Error messages -->
     <string name="error_already_running">A live update is already running</string>
     <string name="error_no_active">No active live update to modify</string>

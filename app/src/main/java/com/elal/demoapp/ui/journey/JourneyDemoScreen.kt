@@ -1,12 +1,17 @@
 package com.elal.demoapp.ui.journey
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +28,8 @@ import com.elal.demoapp.ui.theme.ElAlDemoTheme
 import com.elal.demoapp.ui.theme.Green
 import com.elal.demoapp.ui.theme.Red
 import com.elal.demoapp.ui.util.UiText
+import com.elal.flightsdk.manager.LiveUpdateManager
+import kotlinx.coroutines.delay
 
 @Composable
 fun JourneyDemoScreen(viewModel: JourneyViewModel = viewModel()) {
@@ -31,6 +38,7 @@ fun JourneyDemoScreen(viewModel: JourneyViewModel = viewModel()) {
     val isActivityActive by viewModel.isActivityActive.collectAsState()
     val isSimulating by viewModel.isSimulating.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val watchdog by viewModel.watchdogFlow.collectAsState()
 
     JourneyDemoContent(
         statusText = statusText,
@@ -38,13 +46,15 @@ fun JourneyDemoScreen(viewModel: JourneyViewModel = viewModel()) {
         isActivityActive = isActivityActive,
         isSimulating = isSimulating,
         errorMessage = errorMessage,
+        watchdog = watchdog,
         onStartActivity = { viewModel.startActivity() },
         onNextStage = { viewModel.updateToNextState() },
         onEndActivity = { viewModel.endActivity() },
         onConnectionError = { viewModel.setConnectionError() },
         onGeneralError = { viewModel.setGeneralError() },
         onSimulateDeparture = { viewModel.simulateJourney() },
-        onSimulateArrival = { viewModel.simulateArrivalJourney() }
+        onSimulateArrival = { viewModel.simulateArrivalJourney() },
+        onDebugWatchdog = { viewModel.enableDebugWatchdog() }
     )
 }
 
@@ -56,13 +66,15 @@ fun JourneyDemoContent(
     isActivityActive: Boolean,
     isSimulating: Boolean,
     errorMessage: UiText?,
+    watchdog: LiveUpdateManager.WatchdogState?,
     onStartActivity: () -> Unit,
     onNextStage: () -> Unit,
     onEndActivity: () -> Unit,
     onConnectionError: () -> Unit,
     onGeneralError: () -> Unit,
     onSimulateDeparture: () -> Unit,
-    onSimulateArrival: () -> Unit
+    onSimulateArrival: () -> Unit,
+    onDebugWatchdog: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -165,6 +177,12 @@ fun JourneyDemoContent(
                 }
             }
 
+            // Watchdog countdown + debug button
+            WatchdogCard(
+                watchdog = watchdog,
+                onDebugWatchdog = onDebugWatchdog
+            )
+
             HorizontalDivider()
 
             // Simulate Buttons
@@ -231,6 +249,57 @@ fun JourneyDemoContent(
     }
 }
 
+@Composable
+private fun WatchdogCard(
+    watchdog: LiveUpdateManager.WatchdogState?,
+    onDebugWatchdog: () -> Unit
+) {
+    if (watchdog == null) return
+
+    var nowMs by remember(watchdog) { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(watchdog) {
+        while (true) {
+            nowMs = SystemClock.elapsedRealtime()
+            delay(1_000L)
+        }
+    }
+    val remainingMs = (watchdog.startElapsedRealtimeMs + watchdog.durationMs - nowMs).coerceAtLeast(0L)
+    val totalSec = remainingMs / 1000
+    val hours = totalSec / 3600
+    val minutes = (totalSec % 3600) / 60
+    val seconds = totalSec % 60
+    val countdown = "%02d:%02d:%02d".format(hours, minutes, seconds)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFF1F4F9))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.watchdog_label),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.DarkGray
+        )
+        Text(
+            text = countdown,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = ElAlBlue
+        )
+        Button(
+            onClick = onDebugWatchdog,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Red)
+        ) {
+            Text(stringResource(R.string.watchdog_debug_button))
+        }
+    }
+}
+
 @Preview(showBackground = true, locale = "iw")
 @Composable
 fun JourneyDemoContentIdlePreview() {
@@ -241,13 +310,15 @@ fun JourneyDemoContentIdlePreview() {
             isActivityActive = false,
             isSimulating = false,
             errorMessage = null,
+            watchdog = null,
             onStartActivity = {},
             onNextStage = {},
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
             onSimulateDeparture = {},
-            onSimulateArrival = {}
+            onSimulateArrival = {},
+            onDebugWatchdog = {}
         )
     }
 }
@@ -262,13 +333,15 @@ fun JourneyDemoContentBoardingPreview() {
             isActivityActive = true,
             isSimulating = false,
             errorMessage = null,
+            watchdog = LiveUpdateManager.WatchdogState(SystemClock.elapsedRealtime(), LiveUpdateManager.DEFAULT_WATCHDOG_MS),
             onStartActivity = {},
             onNextStage = {},
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
             onSimulateDeparture = {},
-            onSimulateArrival = {}
+            onSimulateArrival = {},
+            onDebugWatchdog = {}
         )
     }
 }
@@ -283,13 +356,15 @@ fun JourneyDemoContentSimulatingPreview() {
             isActivityActive = true,
             isSimulating = true,
             errorMessage = null,
+            watchdog = LiveUpdateManager.WatchdogState(SystemClock.elapsedRealtime(), LiveUpdateManager.DEFAULT_WATCHDOG_MS),
             onStartActivity = {},
             onNextStage = {},
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
             onSimulateDeparture = {},
-            onSimulateArrival = {}
+            onSimulateArrival = {},
+            onDebugWatchdog = {}
         )
     }
 }
@@ -304,13 +379,15 @@ fun JourneyDemoContentErrorPreview() {
             isActivityActive = true,
             isSimulating = false,
             errorMessage = UiText.DynamicString("You seem to be offline. Check your connection."),
+            watchdog = null,
             onStartActivity = {},
             onNextStage = {},
             onEndActivity = {},
             onConnectionError = {},
             onGeneralError = {},
             onSimulateDeparture = {},
-            onSimulateArrival = {}
+            onSimulateArrival = {},
+            onDebugWatchdog = {}
         )
     }
 }
