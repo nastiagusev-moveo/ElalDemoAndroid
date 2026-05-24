@@ -455,7 +455,7 @@ object LiveUpdateManager {
         val bidi = BidiFormatter.getInstance()
         return when (state.stage) {
             Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters.orDash())
-            Stage.GATE_READY  -> combineLabelAndValue(state.gateTitle, state.message.orDash())
+            Stage.GATE_READY  -> combineLabelAndValue(state.message, combineLabelAndValue(state.gateTitle, state.gate.orDash()))
             Stage.BOARDING    -> combineLabelAndValue(state.title, state.message.orDash())
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate.orDash())
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
