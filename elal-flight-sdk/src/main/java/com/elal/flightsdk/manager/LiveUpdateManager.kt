@@ -43,7 +43,7 @@ object LiveUpdateManager {
 
     // Safety net: if no server event arrives within this window, end the journey.
     // Protects against network outages that would otherwise leave the flow stuck.
-    const val DEFAULT_WATCHDOG_MS: Long = 60L * 1000L
+    const val DEFAULT_WATCHDOG_MS: Long = 23L * 60L * 60L * 1000L
     const val DEBUG_WATCHDOG_MS: Long = 60L * 1000L
 
     var uiDebugMode: Boolean = false
