@@ -387,16 +387,17 @@ object LiveUpdateManager {
             return false
         }
 
-        flightTotalDurationMs = remainingMs
+        val serverDurationMs = state.flightDuration?.takeIf { it > 0 }?.toLong()?.times(60_000L)
+        flightTotalDurationMs = serverDurationMs ?: remainingMs
         flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
-        log.d("flightTotalDurationMs: $flightTotalDurationMs")
+        log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min" else "ETA − Now"})")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
             "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
             "\n   Arrival (ETA)       : ${state.arrivalTime.toHhMmSs()}" +
             "\n   Now                 : ${now.toHhMmSs()}" +
             "\n   ─────────────────────────────────────" +
-            "\n   Remaining           : ${flightTotalDurationMs.toMsReadable()}  (ETA − Now)  ← bar fills over this time" +
+            "\n   Bar duration        : ${flightTotalDurationMs.toMsReadable()}  (${if (serverDurationMs != null) "server flightDuration" else "ETA − Now"})  ← bar fills over this time" +
             "\n   ─────────────────────────────────────" +
             "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
         )
@@ -410,7 +411,12 @@ object LiveUpdateManager {
     }
 
     private fun buildDepartedCountdown(context: Context, state: FlightContentState): String {
-        val remainingMs = state.arrivalTime.toEpochMilli() - wallClockNow().toEpochMilli()
+        val remainingMs = if (flightTotalDurationMs > 0 && flightStartRealtimeMs > 0) {
+            val elapsed = android.os.SystemClock.elapsedRealtime() - flightStartRealtimeMs
+            (flightTotalDurationMs - elapsed).coerceAtLeast(0L)
+        } else {
+            state.arrivalTime.toEpochMilli() - wallClockNow().toEpochMilli()
+        }
         if (remainingMs <= 0L) {
             return context.getString(R.string.notif_content_landing_soon)
         }
