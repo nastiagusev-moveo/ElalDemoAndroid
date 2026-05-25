@@ -10,6 +10,14 @@
             android:foregroundServiceType="specialUse"
             android:exported="false" />
 
+        <activity
+            android:name=".analytics.LiveActivityClickActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+
         <property
             android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
             android:value="Flight status live-update progress bar" />

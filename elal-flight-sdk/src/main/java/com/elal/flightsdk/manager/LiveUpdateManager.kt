@@ -2,7 +2,9 @@ package com.elal.flightsdk.manager
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +13,11 @@ import androidx.core.app.NotificationCompat.ProgressStyle
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.text.BidiFormatter
 import com.elal.flightsdk.R
+import com.elal.flightsdk.analytics.AnalyticsPayloadBuilder
+import com.elal.flightsdk.analytics.ClickSource
+import com.elal.flightsdk.analytics.FlightAnalyticsListener
+import com.elal.flightsdk.analytics.LiveActivityClickActivity
+import com.elal.flightsdk.analytics.TriggerSource
 import com.elal.flightsdk.model.FlightContentState
 import com.elal.flightsdk.model.Stage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +54,18 @@ object LiveUpdateManager {
     const val DEBUG_WATCHDOG_MS: Long = 60L * 1000L
 
     var uiDebugMode: Boolean = false
+
+    /**
+     * Host-app sink for `live_activity_activated` and `live_activity_clicked` events.
+     * Set once at SDK initialization (e.g. in Application.onCreate).
+     */
+    var analyticsListener: FlightAnalyticsListener? = null
+
+    /**
+     * Optional override for the Intent launched when the user taps the Live Activity.
+     * Return null (or leave unset) to fall back to the host's launcher activity.
+     */
+    var clickIntentProvider: ((Context) -> Intent?)? = null
 
     private val _stateFlow = MutableStateFlow<FlightContentState?>(null)
     val stateFlow: StateFlow<FlightContentState?> = _stateFlow.asStateFlow()
@@ -108,12 +127,16 @@ object LiveUpdateManager {
         }
     }
 
-    fun startJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
+    fun startJourney(
+        context: Context,
+        state: FlightContentState,
+        triggerSource: String = TriggerSource.PUSH
+    ): EmptyResult<LiveUpdateError> {
         if (!isSupported) return Result.Success(Unit)
         if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled())
             return Result.Failure(LiveUpdateError.NotificationsNotEnabled())
         if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
-        log.d("startJourney: flight=${state.flightNumber} stage=${state.stage}")
+        log.d("startJourney: flight=${state.flightNumber} stage=${state.stage} trigger=$triggerSource")
         appContext = context.applicationContext
         ensureChannel(context)
         currentState = state
@@ -122,7 +145,14 @@ object LiveUpdateManager {
         flightTotalDurationMs = 0L
         resetWatchdog()
         postNotification(context, state)
+        fireActivated(state, triggerSource)
         return Result.Success(Unit)
+    }
+
+    private fun fireActivated(state: FlightContentState, triggerSource: String) {
+        val listener = analyticsListener ?: return
+        runCatching { listener.onLiveActivityActivated(AnalyticsPayloadBuilder.activated(state, triggerSource)) }
+            .onFailure { log.e("analytics listener threw on activated: ${it.message}") }
     }
 
     fun updateJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
@@ -236,6 +266,7 @@ object LiveUpdateManager {
             .setSmallIcon(R.drawable.ic_elal_chip)
             .setContentTitle(buildStatusBarText(context, state))
             .setContentText(buildContentText(context, state))
+            .setContentIntent(buildClickPendingIntent(context))
             .setStyle(buildProgressStyle(context, state))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
@@ -252,6 +283,19 @@ object LiveUpdateManager {
         // TODO: for DEBUG only
         //debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
         return builder.build()
+    }
+
+    private fun buildClickPendingIntent(context: Context): PendingIntent {
+        val intent = Intent(context, LiveActivityClickActivity::class.java).apply {
+            putExtra(LiveActivityClickActivity.EXTRA_CLICK_SOURCE, ClickSource.LOCK_SCREEN)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return PendingIntent.getActivity(
+            context,
+            NOTIFICATION_ID,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     private fun postNotification(
