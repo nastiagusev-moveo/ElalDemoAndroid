@@ -75,14 +75,17 @@ object LiveUpdateManager {
     private val _watchdogFlow = MutableStateFlow<WatchdogState?>(null)
     val watchdogFlow: StateFlow<WatchdogState?> = _watchdogFlow.asStateFlow()
 
-    private var watchdogDurationMs: Long = DEFAULT_WATCHDOG_MS
+    @Volatile private var watchdogDurationMs: Long = DEFAULT_WATCHDOG_MS
 
-    private var currentState: FlightContentState? = null
+    // Shared mutable state is touched from both the FCM-delivery thread (start/update/end) and the
+    // main-thread handler callbacks (self-update tick, watchdog). @Volatile guarantees visibility;
+    // @Synchronized on the entry points + the tick runnable serializes mutation.
+    @Volatile private var currentState: FlightContentState? = null
     val isActive: Boolean get() = currentState != null
-    private var flightStartRealtimeMs: Long = 0L
-    private var flightTotalDurationMs: Long = 0L
+    @Volatile private var flightStartRealtimeMs: Long = 0L
+    @Volatile private var flightTotalDurationMs: Long = 0L
 
-    private var appContext: Context? = null
+    @Volatile private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
 
     private val watchdogRunnable = Runnable {
@@ -90,11 +93,13 @@ object LiveUpdateManager {
         appContext?.let { endJourney(it) }
     }
 
-    private var selfUpdateState: FlightContentState? = null
+    @Volatile private var selfUpdateState: FlightContentState? = null
     private val selfUpdateRunnable: Runnable = object : Runnable {
-        override fun run() {
-            val ctx = appContext ?: return
-            val state = selfUpdateState ?: return
+        // Same monitor as the @Synchronized entry points, so the timer pair (flightStartRealtimeMs /
+        // flightTotalDurationMs) can't be read mid-update while updateJourney rewrites it.
+        override fun run() = synchronized(LiveUpdateManager) {
+            val ctx = appContext ?: return@synchronized
+            val state = selfUpdateState ?: return@synchronized
             val progress = computeFlightProgress()
             val elapsedMs = android.os.SystemClock.elapsedRealtime() - flightStartRealtimeMs
             val nextTickMs = calculateNextTickInterval()
@@ -103,9 +108,10 @@ object LiveUpdateManager {
             if (progress >= 1.0) {
                 log.i("🏁 FLIGHT COMPLETE: Progress reached 100% — stopping updates")
                 stopSelfUpdate()
-                return
+                return@synchronized
             }
             handler.postDelayed(this, nextTickMs)
+            Unit
         }
     }
 
@@ -127,6 +133,7 @@ object LiveUpdateManager {
         }
     }
 
+    @Synchronized
     fun startJourney(
         context: Context,
         state: FlightContentState,
@@ -141,6 +148,10 @@ object LiveUpdateManager {
         ensureChannel(context)
         currentState = state
         _stateFlow.value = state
+        // Persist on start (not just on update) so a process kill before the first update still
+        // leaves a state for restoreFromPrefs to rebuild — otherwise the next incremental FCM has
+        // no fallback and fails to parse its missing required fields.
+        JourneyPrefs.saveState(context, state)
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
         resetWatchdog()
@@ -155,6 +166,7 @@ object LiveUpdateManager {
             .onFailure { log.e("analytics listener threw on activated: ${it.message}") }
     }
 
+    @Synchronized
     fun updateJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
         if (!isSupported) return Result.Success(Unit)
         if (currentState == null) return Result.Failure(LiveUpdateError.NoActiveActivity())
@@ -197,6 +209,7 @@ object LiveUpdateManager {
         return Result.Success(Unit)
     }
 
+    @Synchronized
     fun endJourney(context: Context) {
         if (!isSupported) return
         log.i("endJourney")
@@ -229,6 +242,7 @@ object LiveUpdateManager {
     }
 
     /** Change the watchdog duration. If a watchdog is currently active, restart it with the new value. */
+    @Synchronized
     fun setWatchdogDuration(durationMs: Long) {
         watchdogDurationMs = durationMs
         if (_watchdogFlow.value != null) resetWatchdog()
@@ -327,6 +341,7 @@ object LiveUpdateManager {
             .build()
     }
 
+    @Synchronized
     fun restoreFromPrefs(context: Context, startServiceIfActive: Boolean = true) {
         if (!isSupported) return
         val state = JourneyPrefs.loadState(context) ?: return

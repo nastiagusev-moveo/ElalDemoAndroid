@@ -33,6 +33,13 @@ class FlightMessagingService : FirebaseMessagingService() {
             return
         }
 
+        // A process kill wipes the in-memory singleton. Rebuild it from prefs first so an incremental
+        // update isn't force-routed to startJourney with a null fallback — which would then fail to
+        // parse on the missing required fields and silently drop the update.
+        if (!LiveUpdateManager.isActive) {
+            LiveUpdateManager.restoreFromPrefs(applicationContext, startServiceIfActive = false)
+        }
+
         val isStart = event == "start" || !LiveUpdateManager.isActive
         val fallback = if (!isStart) LiveUpdateManager.stateFlow.value else null
 

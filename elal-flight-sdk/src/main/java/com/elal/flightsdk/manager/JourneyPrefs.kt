@@ -20,7 +20,11 @@ internal object JourneyPrefs {
     }
 
     fun saveState(context: Context, state: FlightContentState) {
-        context.prefs().edit { putString(KEY_STATE, json.encodeToString(FlightContentState.serializer(), state)) }
+        // commit() (synchronous) rather than apply(): an FCM update can be immediately followed by
+        // the process being killed, and an async apply() write may not have flushed by then. The
+        // critical FCM path runs off the main thread; the in-app debug path is on the main thread but
+        // this is a single small value, so the blocking write is negligible.
+        context.prefs().edit(commit = true) { putString(KEY_STATE, json.encodeToString(FlightContentState.serializer(), state)) }
     }
 
     fun loadState(context: Context): FlightContentState? {
