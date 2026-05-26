@@ -190,7 +190,7 @@ object LiveUpdateManager {
                 if (selfUpdateState == null) {
                     val stillInFlight = setupRealtimeClocks(state)
                     if (stillInFlight) startSelfUpdate(state) else selfUpdateState = state
-                    androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
+                    ensureInFlightService(context)
                 } else {
                     selfUpdateState = state
                     setupRealtimeClocks(state)
@@ -358,9 +358,23 @@ object LiveUpdateManager {
         }
     }
 
+    /**
+     * Start [InFlightService] as a foreground service, tolerating the Android 12+ background-start
+     * restriction. When the app is in the background without an active exemption (e.g. a
+     * normal-priority FCM), startForegroundService() throws ForegroundServiceStartNotAllowedException.
+     * Left unguarded this crashed the FCM handler, and crashed Application.onCreate during
+     * restoreFromPrefs — so a persisted DEPARTED state bricked FCM delivery in a crash loop
+     * ("crashed too many times, killing"). The Live Update notification is posted separately via
+     * NotificationManager and still updates; we only forgo the process-keep-alive service until the
+     * app is next in the foreground.
+     */
     private fun ensureInFlightService(context: Context) {
         val intent = android.content.Intent(context, InFlightService::class.java)
-        androidx.core.content.ContextCompat.startForegroundService(context, intent)
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(context, intent)
+        } catch (e: Exception) {
+            log.e("startForegroundService denied (app likely backgrounded) — notification still updates, skipping FGS: ${e.message}")
+        }
     }
 
     /**
