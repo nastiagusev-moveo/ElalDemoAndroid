@@ -40,15 +40,35 @@ class InFlightService : Service() {
         }
         val notification = LiveUpdateManager.buildCurrentNotification(this)
         if (notification != null) {
-            startForeground(LiveUpdateManager.NOTIFICATION_ID, notification)
+            if (!startForegroundSafely(notification)) return START_NOT_STICKY
         } else {
             Log.e(TAG, "buildCurrentNotification returned null — showing GENERAL_ERROR and stopping")
             val errorNotification = LiveUpdateManager.buildGeneralErrorNotification(this)
-            startForeground(LiveUpdateManager.NOTIFICATION_ID, errorNotification)
+            if (!startForegroundSafely(errorNotification)) return START_NOT_STICKY
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
             stopSelf()
         }
         return START_STICKY
+    }
+
+    /**
+     * Android 12+ checks background-start eligibility a second time inside Service.startForeground()
+     * (mAllowStartForeground), so the try-catch around startForegroundService() in the caller does
+     * not cover this path. It is hit in particular on START_STICKY restarts after process death
+     * (null intent), where the app is in the background with no exemption. On failure we stop the
+     * service and return START_NOT_STICKY so the system doesn't restart it into the same crash.
+     * The Live Update notification is posted separately via NotificationManager and stays visible;
+     * only the process-keep-alive service is forgone until the next eligible start.
+     */
+    private fun startForegroundSafely(notification: android.app.Notification): Boolean {
+        return try {
+            startForeground(LiveUpdateManager.NOTIFICATION_ID, notification)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "startForeground denied (background start restriction) — stopping service: ${e.message}")
+            stopSelf()
+            false
+        }
     }
 
     override fun onDestroy() {
