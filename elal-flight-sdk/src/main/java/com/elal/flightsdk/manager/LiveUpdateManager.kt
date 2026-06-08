@@ -460,16 +460,18 @@ object LiveUpdateManager {
             return false
         }
 
-        // If departure already passed, subtract the elapsed gap so the bar fills over the
-        // *remaining* duration and the countdown reflects time actually left — not the full
-        // flightDuration restarted from now (which happens after process restoration or when
-        // the activity is started mid-flight).
-        val sinceDepartureMs = (now.toEpochMilli() - state.departureTime.toEpochMilli()).coerceAtLeast(0L)
+        // Adjust the server flightDuration by the offset between departure and now so the bar always
+        // fills over the time actually left until arrival, anchored at now:
+        //   • departure already passed     → offset > 0, subtract the elapsed gap (shorter remaining)
+        //   • push arrived before departure → offset < 0, add the wait until departure (longer remaining)
+        // Keeps the bar reaching 100% at the real arrival after process restoration or when the
+        // activity starts off-cycle from departure.
+        val departureOffsetMs = now.toEpochMilli() - state.departureTime.toEpochMilli()
         val serverDurationMs = state.flightDuration?.takeIf { it > 0 }?.toLong()?.times(60_000L)
-            ?.let { it - sinceDepartureMs }?.takeIf { it > 0L }
+            ?.let { it - departureOffsetMs }?.takeIf { it > 0L }
         flightTotalDurationMs = serverDurationMs ?: remainingMs
         flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
-        log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min − sinceDeparture=${sinceDepartureMs / 60_000L}min" else "ETA − Now"})")
+        log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min, departureOffset=${departureOffsetMs / 60_000L}min" else "ETA − Now"})")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
             "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
