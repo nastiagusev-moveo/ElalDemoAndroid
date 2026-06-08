@@ -460,10 +460,16 @@ object LiveUpdateManager {
             return false
         }
 
+        // If departure already passed, subtract the elapsed gap so the bar fills over the
+        // *remaining* duration and the countdown reflects time actually left — not the full
+        // flightDuration restarted from now (which happens after process restoration or when
+        // the activity is started mid-flight).
+        val sinceDepartureMs = (now.toEpochMilli() - state.departureTime.toEpochMilli()).coerceAtLeast(0L)
         val serverDurationMs = state.flightDuration?.takeIf { it > 0 }?.toLong()?.times(60_000L)
+            ?.let { it - sinceDepartureMs }?.takeIf { it > 0L }
         flightTotalDurationMs = serverDurationMs ?: remainingMs
         flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
-        log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min" else "ETA − Now"})")
+        log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min − sinceDeparture=${sinceDepartureMs / 60_000L}min" else "ETA − Now"})")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
             "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
