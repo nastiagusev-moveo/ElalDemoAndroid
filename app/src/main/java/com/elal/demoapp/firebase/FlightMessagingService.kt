@@ -89,7 +89,8 @@ private fun Map<String, String>.toFlightContentState(fallback: FlightContentStat
         terminal = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal?.takeIf { it.isNotEmpty() } ?: "--",
         arrivalTerminal = get("arrivalTerminal")?.takeIf { it.isNotEmpty() } ?: fallback?.arrivalTerminal?.takeIf { it.isNotEmpty() } ?: "--",
         gate = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate?.takeIf { it.isNotEmpty() } ?: "--",
-        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotEmpty() } ?: fallback?.baggageCarousel?.takeIf { it.isNotEmpty() } ?: "--",
+        // No merge: an absent or blank baggageCarousel clears the belt (renders title only).
+        baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotBlank() } ?: "--",
         checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters?.takeIf { it.isNotEmpty() } ?: "--",
         boardingZone = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone?.takeIf { it.isNotEmpty() } ?: "--",
         stage = Stage.valueOf(requireField("stage").uppercase()),

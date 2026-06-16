@@ -549,7 +549,7 @@ object LiveUpdateManager {
             Stage.LANDED      -> if (state.baggageCarousel.isNullOrBlank() || state.baggageCarousel == "--") {
                 state.title
             } else {
-                combineLabelAndValue(state.message, state.baggageCarousel)
+                "${state.title}\n${combineLabelAndValue(combineLabelAndValue(state.message, state.carouselTitle), state.baggageCarousel)}"
             }
             Stage.BAGGAGE     -> combineLabelAndValue(state.title, state.baggageCarousel.orDash())
             Stage.COMPLETED   -> context.getString(R.string.notif_content_arrival_welcome, bidi.unicodeWrap(state.destination))
