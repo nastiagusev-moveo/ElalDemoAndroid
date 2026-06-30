@@ -403,7 +403,7 @@ object LiveUpdateManager {
             Stage.GATE_READY, Stage.AWAITING_BOARDING,
             Stage.BOARDING                                   ->  1
             Stage.LAST_CALL, Stage.DEPARTED                  ->  2
-            Stage.LANDING_SOON                               ->  3
+            Stage.LANDING_SOON                               ->  4
             Stage.LANDED, Stage.BAGGAGE                      ->  4
             Stage.COMPLETED                                  ->  4
         }
@@ -423,8 +423,7 @@ object LiveUpdateManager {
                 if (uiDebugMode) log.d("[AIRPLANE] fill=$filled / $longSegLen | progressBar=${flightStart + filled} / $PROGRESS_MAX")
                 flightStart + filled
             }
-            progressIndex >= 4 -> PROGRESS_MAX      // LANDED/BAGGAGE — end of bar
-            progressIndex >= 3 -> PROGRESS_MAX - (longSegLen / 6)  // LANDING_SOON — airplane near end of path
+            progressIndex >= 4 -> PROGRESS_MAX      // LANDING_SOON/LANDED/BAGGAGE — end of bar
             progressIndex >= 2 -> flightStart       // LAST_CALL — airplane at path start
             progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING — end of seg0
             else               -> 0                 // CHECK_IN / errors
