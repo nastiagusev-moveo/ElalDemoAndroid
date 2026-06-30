@@ -196,7 +196,7 @@ object LiveUpdateManager {
                     setupRealtimeClocks(state)
                 }
             }
-            Stage.LANDED, Stage.BAGGAGE -> {
+            Stage.LANDING_SOON, Stage.LANDED, Stage.BAGGAGE -> {
                 resetFlightTimers()
             }
             else -> {
@@ -400,8 +400,10 @@ object LiveUpdateManager {
         val progressIndex = when (state.stage) {
             Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR      -> -1
             Stage.CHECK_IN                                   ->  0
-            Stage.GATE_READY, Stage.BOARDING                 ->  1
+            Stage.GATE_READY, Stage.AWAITING_BOARDING,
+            Stage.BOARDING                                   ->  1
             Stage.LAST_CALL, Stage.DEPARTED                  ->  2
+            Stage.LANDING_SOON                               ->  3
             Stage.LANDED, Stage.BAGGAGE                      ->  4
             Stage.COMPLETED                                  ->  4
         }
@@ -422,6 +424,7 @@ object LiveUpdateManager {
                 flightStart + filled
             }
             progressIndex >= 4 -> PROGRESS_MAX      // LANDED/BAGGAGE — end of bar
+            progressIndex >= 3 -> PROGRESS_MAX - (longSegLen / 6)  // LANDING_SOON — airplane near end of path
             progressIndex >= 2 -> flightStart       // LAST_CALL — airplane at path start
             progressIndex >= 1 -> seg0Len           // GATE_READY/BOARDING — end of seg0
             else               -> 0                 // CHECK_IN / errors
@@ -435,7 +438,7 @@ object LiveUpdateManager {
         val trackerIcon = when (state.stage) {
             Stage.LAST_CALL            -> R.drawable.ic_airplane_taking_off_left_2
             Stage.DEPARTED             -> R.drawable.ic_airplane_move_left_2
-            Stage.LANDED, Stage.BAGGAGE -> R.drawable.ic_airplane_land_left_2
+            Stage.LANDING_SOON, Stage.LANDED, Stage.BAGGAGE -> R.drawable.ic_airplane_land_left_2
             else                       -> R.drawable.ic_airplane_placeholder_transparent
         }
         style.setProgressTrackerIcon(IconCompat.createWithResource(context, trackerIcon))
@@ -529,9 +532,9 @@ object LiveUpdateManager {
         val flightNumber = bidi.unicodeWrap(state.flightNumber.orDash())
         val stageTitle = state.stageTitle.orDash()
         return when (state.stage) {
-            Stage.CHECK_IN, Stage.GATE_READY, Stage.BOARDING, Stage.LAST_CALL ->
+            Stage.CHECK_IN, Stage.GATE_READY, Stage.AWAITING_BOARDING, Stage.BOARDING, Stage.LAST_CALL ->
                 "$flightNumber • ${state.departureTime.toFormattedTime()} • $stageTitle"
-            Stage.DEPARTED, Stage.LANDED, Stage.BAGGAGE, Stage.COMPLETED ->
+            Stage.DEPARTED, Stage.LANDING_SOON, Stage.LANDED, Stage.BAGGAGE, Stage.COMPLETED ->
                 "$flightNumber • ${state.arrivalTime.toFormattedTime()} • $stageTitle"
             Stage.CONNECTION_ERROR -> context.getString(R.string.notif_statusbar_connection_error)
             Stage.GENERAL_ERROR    -> context.getString(R.string.notif_statusbar_general_error)
@@ -543,9 +546,11 @@ object LiveUpdateManager {
         return when (state.stage) {
             Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters.orDash())
             Stage.GATE_READY  -> combineLabelAndValue(state.message, combineLabelAndValue(state.gateTitle, state.gate.orDash()))
+            Stage.AWAITING_BOARDING -> state.message.orDash()
             Stage.BOARDING    -> state.message.orDash()
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate.orDash())
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
+            Stage.LANDING_SOON -> state.message.orDash()
             Stage.LANDED      -> if (state.baggageCarousel.isNullOrBlank() || state.baggageCarousel == "--") {
                 state.title
             } else {

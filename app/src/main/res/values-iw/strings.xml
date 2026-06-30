@@ -14,9 +14,11 @@
     <!-- Stage display names (for Compose UI) -->
     <string name="status_check_in">צ\'ק-אין</string>
     <string name="status_gate_ready">שער מוכן</string>
+    <string name="status_awaiting_boarding">ממתינים לעלייה</string>
     <string name="status_boarding">עלייה למטוס</string>
     <string name="status_last_call">קריאה אחרונה</string>
     <string name="status_departed">בדרך</string>
+    <string name="status_landing_soon">נוחתים בקרוב</string>
     <string name="status_landed">נחיתה</string>
     <string name="status_baggage">כבודה</string>
     <string name="status_completed">הסתיים</string>
@@ -30,9 +32,11 @@
     <!-- Detail texts -->
     <string name="detail_check_in">דלפקי צ\'ק-אין: %s</string>
     <string name="detail_gate_ready">שער: %s</string>
+    <string name="detail_awaiting_boarding">העלייה למטוס תחל בקרוב, שער: %s</string>
     <string name="detail_boarding">שער: %s</string>
     <string name="detail_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
     <string name="detail_departed">נחיתה ב-%s</string>
+    <string name="detail_landing_soon">נוחתים בקרוב ב-%s</string>
     <string name="detail_landed">ברוכים הבאים ל-%s</string>
     <string name="detail_baggage">כבודה בקרוסלה: %s</string>
     <string name="detail_connection_error">נראה שאתה לא מחובר. בדוק את החיבור שלך.</string>

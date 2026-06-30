@@ -14,9 +14,11 @@
     <!-- Stage display names (for Compose UI) -->
     <string name="status_check_in">Check In</string>
     <string name="status_gate_ready">Gate Ready</string>
+    <string name="status_awaiting_boarding">Awaiting Boarding</string>
     <string name="status_boarding">Boarding</string>
     <string name="status_last_call">Last Call</string>
     <string name="status_departed">On The Way</string>
+    <string name="status_landing_soon">Landing Soon</string>
     <string name="status_landed">Landed</string>
     <string name="status_baggage">Baggage Claim</string>
     <string name="status_completed">Completed</string>
@@ -30,9 +32,11 @@
     <!-- Detail texts (format strings) -->
     <string name="detail_check_in">Check-in desks: %s</string>
     <string name="detail_gate_ready">Gate: %s</string>
+    <string name="detail_awaiting_boarding">Boarding soon at gate: %s</string>
     <string name="detail_boarding">Gate: %s</string>
     <string name="detail_last_call">No boarding after gate closes: %s</string>
     <string name="detail_departed">Landing at %s</string>
+    <string name="detail_landing_soon">Landing soon at %s</string>
     <string name="detail_landed">Welcome to %s</string>
     <string name="detail_baggage">Baggage claim at carousel: %s</string>
     <string name="detail_connection_error">You seem to be offline. Check your connection.</string>
