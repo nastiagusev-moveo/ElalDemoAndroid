@@ -40,7 +40,7 @@ internal object AnalyticsPayloadBuilder {
     private fun stageLabel(stage: Stage): String = when (stage) {
         Stage.CHECK_IN -> "Check-in open"
         Stage.GATE_READY -> "Gate ready"
-        Stage.AWAITING_BOARDING -> "Awaiting boarding"
+        Stage.BOARDING_PENDING -> "Boarding pending"
         Stage.BOARDING -> "Boarding starts"
         Stage.LAST_CALL -> "Last call"
         Stage.DEPARTED -> "Flight departs"
@@ -60,7 +60,7 @@ internal object AnalyticsPayloadBuilder {
 
     private fun dynamicData(state: FlightContentState): String? = when (state.stage) {
         Stage.CHECK_IN -> state.checkInCounters?.takeIf { it.isNotBlank() && it != "--" }?.let { "Desk: $it" }
-        Stage.GATE_READY, Stage.AWAITING_BOARDING, Stage.LAST_CALL -> state.gate?.takeIf { it.isNotBlank() }?.let { "Gate: $it" }
+        Stage.GATE_READY, Stage.BOARDING_PENDING, Stage.LAST_CALL -> state.gate?.takeIf { it.isNotBlank() }?.let { "Gate: $it" }
         Stage.BOARDING -> state.boardingZone?.takeIf { it.isNotBlank() }?.let { "Zone: $it" }
             ?: state.gate?.takeIf { it.isNotBlank() }?.let { "Gate: $it" }
         Stage.LANDED, Stage.BAGGAGE -> state.baggageCarousel

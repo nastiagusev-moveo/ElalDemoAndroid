@@ -400,7 +400,7 @@ object LiveUpdateManager {
         val progressIndex = when (state.stage) {
             Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR      -> -1
             Stage.CHECK_IN                                   ->  0
-            Stage.GATE_READY, Stage.AWAITING_BOARDING,
+            Stage.GATE_READY, Stage.BOARDING_PENDING,
             Stage.BOARDING                                   ->  1
             Stage.LAST_CALL, Stage.DEPARTED                  ->  2
             Stage.LANDING_SOON                               ->  4
@@ -531,7 +531,7 @@ object LiveUpdateManager {
         val flightNumber = bidi.unicodeWrap(state.flightNumber.orDash())
         val stageTitle = state.stageTitle.orDash()
         return when (state.stage) {
-            Stage.CHECK_IN, Stage.GATE_READY, Stage.AWAITING_BOARDING, Stage.BOARDING, Stage.LAST_CALL ->
+            Stage.CHECK_IN, Stage.GATE_READY, Stage.BOARDING_PENDING, Stage.BOARDING, Stage.LAST_CALL ->
                 "$flightNumber • ${state.departureTime.toFormattedTime()} • $stageTitle"
             Stage.DEPARTED, Stage.LANDING_SOON, Stage.LANDED, Stage.BAGGAGE, Stage.COMPLETED ->
                 "$flightNumber • ${state.arrivalTime.toFormattedTime()} • $stageTitle"
@@ -545,7 +545,7 @@ object LiveUpdateManager {
         return when (state.stage) {
             Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters.orDash())
             Stage.GATE_READY  -> combineLabelAndValue(state.message, combineLabelAndValue(state.gateTitle, state.gate.orDash()))
-            Stage.AWAITING_BOARDING -> state.message.orDash()
+            Stage.BOARDING_PENDING -> state.message.orDash()
             Stage.BOARDING    -> state.message.orDash()
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate.orDash())
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
