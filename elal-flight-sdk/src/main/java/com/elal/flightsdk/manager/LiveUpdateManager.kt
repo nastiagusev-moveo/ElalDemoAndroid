@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.combineLabelAndValue
 import com.elal.flightsdk.utils.orDash
+import com.elal.flightsdk.utils.toDeviceWallClock
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.toHhMmSs
 import com.elal.flightsdk.utils.toMmSs
@@ -291,8 +292,8 @@ object LiveUpdateManager {
             .setShowWhen(false)
             .setOnlyAlertOnce(
                 isSelfUpdate ||
-                state.stage == Stage.CONNECTION_ERROR ||
-                state.stage == Stage.GENERAL_ERROR
+                        state.stage == Stage.CONNECTION_ERROR ||
+                        state.stage == Stage.GENERAL_ERROR
             )
         // TODO: for DEBUG only
         //debugNextStageIntent?.let { builder.addAction(0, "Next Stage", it) }
@@ -468,7 +469,11 @@ object LiveUpdateManager {
         //   • push arrived before departure → offset < 0, add the wait until departure (longer remaining)
         // Keeps the bar reaching 100% at the real arrival after process restoration or when the
         // activity starts off-cycle from departure.
-        val departureOffsetMs = now.toEpochMilli() - state.departureTime.toEpochMilli()
+        // departureTime is origin-airport local (00:20 at JFK) while `now` is device local, so it has to
+        // be moved onto the device's clock first — otherwise the gap between the two zones is counted as
+        // elapsed flight time (7h for JFK→TLV) and the subtraction below collapses to minutes.
+        val departureWallClock = state.departureTime.toDeviceWallClock(state.departureTimezoneOffset)
+        val departureOffsetMs = now.toEpochMilli() - departureWallClock.toEpochMilli()
         val serverDurationMs = state.flightDuration?.takeIf { it > 0 }?.toLong()?.times(60_000L)
             ?.let { it - departureOffsetMs }?.takeIf { it > 0L }
         flightTotalDurationMs = serverDurationMs ?: remainingMs
@@ -476,13 +481,15 @@ object LiveUpdateManager {
         log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min, departureOffset=${departureOffsetMs / 60_000L}min" else "ETA − Now"})")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
-            "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
-            "\n   Arrival (ETA)       : ${state.arrivalTime.toHhMmSs()}" +
-            "\n   Now                 : ${now.toHhMmSs()}" +
-            "\n   ─────────────────────────────────────" +
-            "\n   Bar duration        : ${flightTotalDurationMs.toMsReadable()}  (${if (serverDurationMs != null) "server flightDuration" else "ETA − Now"})  ← bar fills over this time" +
-            "\n   ─────────────────────────────────────" +
-            "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
+                    "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
+                    (if (departureWallClock != state.departureTime)
+                        " (${state.origin} ${state.departureTimezoneOffset}) → ${departureWallClock.toHhMmSs()} (device)" else "") +
+                    "\n   Arrival (ETA)       : ${state.arrivalTime.toHhMmSs()}" +
+                    "\n   Now                 : ${now.toHhMmSs()}" +
+                    "\n   ─────────────────────────────────────" +
+                    "\n   Bar duration        : ${flightTotalDurationMs.toMsReadable()}  (${if (serverDurationMs != null) "server flightDuration" else "ETA − Now"})  ← bar fills over this time" +
+                    "\n   ─────────────────────────────────────" +
+                    "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
         )
         return true
     }

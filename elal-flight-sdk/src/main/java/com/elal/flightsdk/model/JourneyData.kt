@@ -31,6 +31,8 @@ data class FlightContentState(
     val destination: String,
     @Serializable(with = InstantSerializer::class) val departureTime: Instant,
     @Serializable(with = InstantSerializer::class) val arrivalTime: Instant,
+    /** UTC offset of [departureTime]'s airport, e.g. "-04". Needed to compare it against the device clock. */
+    val departureTimezoneOffset: String? = null,
     val terminal: String? = null,
     val arrivalTerminal: String? = null,
     val gate: String? = null,

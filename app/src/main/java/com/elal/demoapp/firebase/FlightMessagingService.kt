@@ -86,6 +86,10 @@ private fun Map<String, String>.toFlightContentState(fallback: FlightContentStat
         arrivalTime = get("arrivalTime")?.takeIf { it.isNotEmpty() }?.let { parseServerTime(it) }
                             ?: fallback?.arrivalTime
                             ?: parseServerTime(requireField("arrivalTime")),
+        // Kept as the raw server string: departureTime stays airport-local for display, and the SDK
+        // applies this offset only where it needs to compare against the device clock.
+        departureTimezoneOffset = get("departureTimezoneOffset")?.takeIf { it.isNotEmpty() }
+                            ?: fallback?.departureTimezoneOffset,
         terminal = get("terminal")?.takeIf { it.isNotEmpty() } ?: fallback?.terminal?.takeIf { it.isNotEmpty() } ?: "--",
         arrivalTerminal = get("arrivalTerminal")?.takeIf { it.isNotEmpty() } ?: fallback?.arrivalTerminal?.takeIf { it.isNotEmpty() } ?: "--",
         gate = get("gate")?.takeIf { it.isNotEmpty() } ?: fallback?.gate?.takeIf { it.isNotEmpty() } ?: "--",
