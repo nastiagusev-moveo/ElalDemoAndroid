@@ -53,6 +53,7 @@ data class FlightContentState(
     val gateTitle: String = "",
     val carouselTitle: String = "",
     @Serializable(with = InstantSerializer::class) val dismissalDate: Instant? = null,
+    /** Total flight time in **minutes**, as sent by the server. Drives the DEPARTED countdown verbatim. */
     val flightDuration: Int? = null,
     val hasConnections: Boolean = false,
     val language: AppLanguage
