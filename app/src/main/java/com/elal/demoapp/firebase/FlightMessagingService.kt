@@ -47,10 +47,15 @@ class FlightMessagingService : FirebaseMessagingService() {
             .onFailure { log.e("Failed to parse FCM data: ${it.message}", it) }
             .getOrNull() ?: return
 
+        // google.sent_time — stamped by FCM's servers, not by this handset. Handed to the SDK as the
+        // trusted "now" so the DEPARTED countdown survives a device with auto-time switched off.
+        // Zero when FCM did not supply one; the SDK then falls back to the device clock.
+        val serverNowMs = message.sentTime
+
         val result = if (isStart) {
-            LiveUpdateManager.startJourney(applicationContext, state)
+            LiveUpdateManager.startJourney(applicationContext, state, serverNowMs = serverNowMs)
         } else {
-            LiveUpdateManager.updateJourney(applicationContext, state)
+            LiveUpdateManager.updateJourney(applicationContext, state, serverNowMs = serverNowMs)
         }
 
         result.onFailure { error ->

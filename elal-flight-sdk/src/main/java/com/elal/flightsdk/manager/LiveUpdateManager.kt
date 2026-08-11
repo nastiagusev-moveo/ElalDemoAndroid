@@ -26,12 +26,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.elal.flightsdk.utils.Logger
 import com.elal.flightsdk.utils.combineLabelAndValue
 import com.elal.flightsdk.utils.orDash
-import com.elal.flightsdk.utils.toDeviceWallClock
+import com.elal.flightsdk.utils.toAbsoluteInstant
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.toHhMmSs
 import com.elal.flightsdk.utils.toMmSs
 import com.elal.flightsdk.utils.toMsReadable
 import com.elal.flightsdk.utils.wallClockNow
+import java.time.Instant
 
 /**
  * Manages the lifecycle of Live Update notifications.
@@ -86,14 +87,6 @@ object LiveUpdateManager {
     @Volatile private var flightStartRealtimeMs: Long = 0L
     @Volatile private var flightTotalDurationMs: Long = 0L
 
-    // DEPARTED countdown anchor. Kept separate from the progress-bar pair above because the bar
-    // duration is the server flightDuration adjusted by the departure offset (so the bar still
-    // reaches 100% at the real arrival), while the countdown must show the flightDuration exactly
-    // as it arrived in the push.
-    @Volatile private var countdownStartRealtimeMs: Long = 0L
-    @Volatile private var countdownTotalDurationMs: Long = 0L
-    @Volatile private var countdownSourceMinutes: Int? = null
-
     @Volatile private var appContext: Context? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -114,11 +107,8 @@ object LiveUpdateManager {
             val nextTickMs = calculateNextTickInterval()
             log.d("✈️ FLIGHT PROGRESS: ${(progress * 100).toInt()}% Complete | Elapsed: ${elapsedMs.toMmSs()} / ${flightTotalDurationMs.toMmSs()} | Next update in ${nextTickMs / 1000}s")
             postNotification(ctx, state, isSelfUpdate = true)
-            // The countdown runs on the unadjusted server flightDuration, so it can outlast the bar
-            // (which fills over flightDuration − departureOffset). Keep ticking until both are done,
-            // otherwise the countdown text freezes mid-flight once the airplane parks at the end.
-            val countdownLeftMs = departedCountdownRemainingMs() ?: 0L
-            if (progress >= 1.0 && countdownLeftMs <= 0L) {
+            // Bar and countdown share one clock, so 100% progress means the text is at zero too.
+            if (progress >= 1.0) {
                 log.i("🏁 FLIGHT COMPLETE: Progress reached 100% — stopping updates")
                 stopSelfUpdate()
                 return@synchronized
@@ -150,13 +140,15 @@ object LiveUpdateManager {
     fun startJourney(
         context: Context,
         state: FlightContentState,
-        triggerSource: String = TriggerSource.PUSH
+        triggerSource: String = TriggerSource.PUSH,
+        serverNowMs: Long = 0L
     ): EmptyResult<LiveUpdateError> {
         if (!isSupported) return Result.Success(Unit)
         if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled())
             return Result.Failure(LiveUpdateError.NotificationsNotEnabled())
         if (isActive) return Result.Failure(LiveUpdateError.ActivityAlreadyRunning())
         log.d("startJourney: flight=${state.flightNumber} stage=${state.stage} trigger=$triggerSource")
+        ServerClock.anchor(context, serverNowMs)
         appContext = context.applicationContext
         ensureChannel(context)
         currentState = state
@@ -167,9 +159,6 @@ object LiveUpdateManager {
         JourneyPrefs.saveState(context, state)
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
-        countdownStartRealtimeMs = 0L
-        countdownTotalDurationMs = 0L
-        countdownSourceMinutes = null
         resetWatchdog()
         postNotification(context, state)
         fireActivated(state, triggerSource)
@@ -183,11 +172,18 @@ object LiveUpdateManager {
     }
 
     @Synchronized
-    fun updateJourney(context: Context, state: FlightContentState): EmptyResult<LiveUpdateError> {
+    fun updateJourney(
+        context: Context,
+        state: FlightContentState,
+        serverNowMs: Long = 0L
+    ): EmptyResult<LiveUpdateError> {
         if (!isSupported) return Result.Success(Unit)
         if (currentState == null) return Result.Failure(LiveUpdateError.NoActiveActivity())
         log.d("updateJourney: stage=${state.stage}")
 
+        // Before setupRealtimeClocks below reads it — every DEPARTED push re-anchors "now" to the
+        // backend's stamp, so the countdown never inherits a wrong handset clock.
+        ServerClock.anchor(context, serverNowMs)
         currentState = state
         JourneyPrefs.saveState(context, state)
         resetWatchdog()
@@ -234,6 +230,7 @@ object LiveUpdateManager {
         context.stopService(android.content.Intent(context, InFlightService::class.java))
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         JourneyPrefs.clear(context)
+        ServerClock.reset()
         currentState = null
         _stateFlow.value = null
         appContext = null
@@ -361,6 +358,9 @@ object LiveUpdateManager {
     fun restoreFromPrefs(context: Context, startServiceIfActive: Boolean = true) {
         if (!isSupported) return
         val state = JourneyPrefs.loadState(context) ?: return
+        // elapsedRealtime is measured from boot, so the persisted anchor is still projectable after a
+        // process kill — the countdown resumes on server time rather than dropping to the handset's.
+        ServerClock.restore(context)
         currentState = state
         _stateFlow.value = state
         appContext = context.applicationContext
@@ -471,38 +471,56 @@ object LiveUpdateManager {
      * when duration <= 0.
      */
     private fun setupRealtimeClocks(state: FlightContentState): Boolean {
-        val now = wallClockNow()
+        // Mirrors the iOS live activity: the interval runs from "now" to the arrival instant, and that
+        // arrival is recomputed from scratch on every DEPARTED push as
+        //     departureTime + departureTimezoneOffset + flightDuration
+        // resolved on the GMT timeline. The server never sends the arrival's own offset, so it cannot be
+        // taken from `arrivalTime` — it has to be derived, exactly as iOS derives it.
+        //
+        // Only epoch millis are compared here; `ZoneId.systemDefault()` is never read, so the device's
+        // timezone — a DST flip, or the phone picking up the destination zone as it lands — cannot
+        // move the result. "Now" comes from [ServerClock], i.e. the backend's own stamp on the push
+        // projected forward monotonically, so a handset with auto-time off and a hand-set hour still
+        // counts down to the right arrival.
+        val nowMs = ServerClock.nowMs()
+        val minutes = state.flightDuration?.takeIf { it > 0 }
+        val departureUtc = state.departureTime.toAbsoluteInstant(state.departureTimezoneOffset)
+        val arrivalUtcMs = minutes?.let { m -> departureUtc?.let { it.toEpochMilli() + m * 60_000L } }
 
-        // The countdown text is driven by the raw push value only — see [setupDepartedCountdown].
-        setupDepartedCountdown(state)
-
-        // Adjust the server flightDuration by the offset between departure and now so the bar always
-        // fills over the time actually left until arrival, anchored at now:
-        //   • departure already passed     → offset > 0, subtract the elapsed gap (shorter remaining)
-        //   • push arrived before departure → offset < 0, add the wait until departure (longer remaining)
-        // Keeps the bar reaching 100% at the real arrival after process restoration or when the
-        // activity starts off-cycle from departure.
-        // departureTime is origin-airport local (00:20 at JFK) while `now` is device local, so it has to
-        // be moved onto the device's clock first — otherwise the gap between the two zones is counted as
-        // elapsed flight time (7h for JFK→TLV) and the subtraction below collapses to minutes.
-        val departureWallClock = state.departureTime.toDeviceWallClock(state.departureTimezoneOffset)
-        val departureOffsetMs = now.toEpochMilli() - departureWallClock.toEpochMilli()
-        val serverDurationMs = state.flightDuration?.takeIf { it > 0 }?.toLong()?.times(60_000L)
-            ?.let { it - departureOffsetMs }?.takeIf { it > 0L }
-        // No flightDuration in the push — fall back to ETA − Now as the only duration available.
-        flightTotalDurationMs = serverDurationMs
-            ?: (state.arrivalTime.toEpochMilli() - now.toEpochMilli()).coerceAtLeast(0L)
+        val source: String
+        flightTotalDurationMs = when {
+            // The iOS path. A non-positive result means the calculated arrival has already passed:
+            // the airplane parks at 100% and the text reads "landing soon", which is what iOS shows.
+            arrivalUtcMs != null -> {
+                source = "calculated arrival − now (flightDuration=${minutes}min)"
+                (arrivalUtcMs - nowMs).coerceAtLeast(0L)
+            }
+            // No usable offset, so the naive departure cannot be placed on the timeline and the
+            // duration can only be measured forward from this push. This is the one case that drifts
+            // later than iOS — by however long after departure the push landed.
+            minutes != null -> {
+                source = "flightDuration from now — NO departureTimezoneOffset"
+                log.e("departureTimezoneOffset missing/unparseable ('${state.departureTimezoneOffset}') — cannot resolve the arrival on the GMT timeline; falling back to ${minutes}min from now, which will read later than iOS")
+                minutes.toLong() * 60_000L
+            }
+            // No duration either. arrivalTime is naive destination-local and the server sends no
+            // offset for it, so this stays in the naive frame (wallClockNow) rather than mixing a
+            // naive stamp with epoch millis.
+            else -> {
+                source = "ETA − Now"
+                (state.arrivalTime.toEpochMilli() - wallClockNow().toEpochMilli()).coerceAtLeast(0L)
+            }
+        }
         flightStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
-        log.d("flightTotalDurationMs: $flightTotalDurationMs (source=${if (serverDurationMs != null) "server flightDuration=${state.flightDuration}min, departureOffset=${departureOffsetMs / 60_000L}min" else "ETA − Now"})")
         log.i(
             "\n📋 JOURNEY TIMELINE" +
-                    "\n   Departure           : ${state.departureTime.toHhMmSs()}" +
-                    (if (departureWallClock != state.departureTime)
-                        " (${state.origin} ${state.departureTimezoneOffset}) → ${departureWallClock.toHhMmSs()} (device)" else "") +
-                    "\n   Arrival (ETA)       : ${state.arrivalTime.toHhMmSs()}" +
-                    "\n   Now                 : ${now.toHhMmSs()}" +
+                    "\n   Departure           : ${state.departureTime.toHhMmSs()} (${state.origin} local, offset ${state.departureTimezoneOffset.orDash()})" +
+                    (departureUtc?.let { "\n   Departure (GMT)     : ${it.toHhMmSs()}" } ?: "") +
+                    (arrivalUtcMs?.let { "\n   Arrival (calculated): ${Instant.ofEpochMilli(it).toHhMmSs()} GMT  ← departure + ${minutes}min" } ?: "") +
+                    "\n   Arrival (server ETA): ${state.arrivalTime.toHhMmSs()}  (display only)" +
+                    "\n   Now (GMT)           : ${Instant.ofEpochMilli(nowMs).toHhMmSs()}  (${if (ServerClock.isAnchored) "server clock" else "device clock"})" +
                     "\n   ─────────────────────────────────────" +
-                    "\n   Bar duration        : ${flightTotalDurationMs.toMsReadable()}  (${if (serverDurationMs != null) "server flightDuration" else "ETA − Now"})  ← bar fills over this time" +
+                    "\n   Interval            : ${flightTotalDurationMs.toMsReadable()}  ($source)  ← bar and countdown both run over this" +
                     "\n   ─────────────────────────────────────" +
                     "\n   Tick Interval       : ${calculateNextTickInterval() / 1000}s"
         )
@@ -516,33 +534,17 @@ object LiveUpdateManager {
     }
 
     /**
-     * Anchor the DEPARTED countdown to the server `flightDuration` verbatim — no departure-offset
-     * adjustment, so the first DEPARTED notification reads exactly the duration the push carried.
-     * Re-anchored only when the server sends a *different* duration, so the repeated DEPARTED
-     * pushes keep ticking down instead of jumping back to the full duration on every event.
-     * Cleared when the push carries no duration, leaving [buildDepartedCountdown] on its
-     * ETA − Now fallback.
+     * Time left on the countdown text, or null when [setupRealtimeClocks] found nothing to run over.
+     *
+     * Shares the progress bar's clock, so the two can never disagree: both start at the push and both
+     * reach zero at the calculated arrival — the instant the iOS live activity ends on. Decrementing
+     * on the monotonic elapsedRealtime() means a clock or timezone change mid-flight cannot jerk the
+     * text; the absolute arrival is re-resolved on the next push instead.
      */
-    private fun setupDepartedCountdown(state: FlightContentState) {
-        val minutes = state.flightDuration?.takeIf { it > 0 }
-        if (minutes == null) {
-            countdownSourceMinutes = null
-            countdownTotalDurationMs = 0L
-            countdownStartRealtimeMs = 0L
-            return
-        }
-        if (minutes == countdownSourceMinutes && countdownStartRealtimeMs > 0L) return
-        countdownSourceMinutes = minutes
-        countdownTotalDurationMs = minutes.toLong() * 60_000L
-        countdownStartRealtimeMs = android.os.SystemClock.elapsedRealtime()
-        log.d("Countdown anchored to server flightDuration=${minutes}min (${countdownTotalDurationMs.toMsReadable()}) — unadjusted")
-    }
-
-    /** Time left on the countdown text, or null when there is no server duration to count down. */
     private fun departedCountdownRemainingMs(): Long? {
-        if (countdownTotalDurationMs <= 0L || countdownStartRealtimeMs <= 0L) return null
-        val elapsed = android.os.SystemClock.elapsedRealtime() - countdownStartRealtimeMs
-        return (countdownTotalDurationMs - elapsed).coerceAtLeast(0L)
+        if (flightTotalDurationMs <= 0L || flightStartRealtimeMs <= 0L) return null
+        val elapsed = android.os.SystemClock.elapsedRealtime() - flightStartRealtimeMs
+        return (flightTotalDurationMs - elapsed).coerceAtLeast(0L)
     }
 
     private fun buildDepartedCountdown(context: Context, state: FlightContentState): String {
@@ -566,9 +568,6 @@ object LiveUpdateManager {
         stopSelfUpdate()
         flightStartRealtimeMs = 0L
         flightTotalDurationMs = 0L
-        countdownStartRealtimeMs = 0L
-        countdownTotalDurationMs = 0L
-        countdownSourceMinutes = null
     }
 
     private fun computeFlightProgress(): Double {
