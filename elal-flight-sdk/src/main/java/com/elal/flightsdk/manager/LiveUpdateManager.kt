@@ -417,7 +417,7 @@ object LiveUpdateManager {
             Stage.CONNECTION_ERROR, Stage.GENERAL_ERROR      -> -1
             Stage.CHECK_IN                                   ->  0
             Stage.GATE_READY, Stage.BOARDING_PENDING,
-            Stage.BOARDING                                   ->  1
+            Stage.BOARDING, Stage.DEPARTURE_PENDING          ->  1
             Stage.LAST_CALL, Stage.DEPARTED                  ->  2
             Stage.LANDING_SOON                               ->  4
             Stage.LANDED, Stage.BAGGAGE                      ->  4
@@ -564,6 +564,22 @@ object LiveUpdateManager {
         }
     }
 
+    /**
+     * DEPARTURE_PENDING content line: the server-sent [FlightContentState.message] (e.g. "Estimated
+     * flight time") concatenated with the approximate flight time derived from
+     * [FlightContentState.flightDuration] (server-sent minutes), formatted as "Xh:MMm" — e.g. a
+     * message of "Estimated flight time" + 210 → "Estimated flight time 3h:30m". The label is never
+     * hardcoded here; it comes from the server message. Falls back to the message alone when the
+     * server sends no usable duration.
+     */
+    private fun buildEstimatedFlightTime(context: Context, state: FlightContentState): String {
+        val minutes = state.flightDuration?.takeIf { it > 0 } ?: return state.message.orDash()
+        val hours = minutes / 60
+        val mins = minutes % 60
+        val flightTime = context.getString(R.string.notif_flight_time, hours, mins)
+        return combineLabelAndValue(state.message, flightTime)
+    }
+
     private fun resetFlightTimers() {
         stopSelfUpdate()
         flightStartRealtimeMs = 0L
@@ -581,7 +597,7 @@ object LiveUpdateManager {
         val flightNumber = bidi.unicodeWrap(state.flightNumber.orDash())
         val stageTitle = state.stageTitle.orDash()
         return when (state.stage) {
-            Stage.CHECK_IN, Stage.GATE_READY, Stage.BOARDING_PENDING, Stage.BOARDING, Stage.LAST_CALL ->
+            Stage.CHECK_IN, Stage.GATE_READY, Stage.BOARDING_PENDING, Stage.BOARDING, Stage.LAST_CALL, Stage.DEPARTURE_PENDING ->
                 "$flightNumber • ${state.departureTime.toFormattedTime()} • $stageTitle"
             Stage.DEPARTED, Stage.LANDING_SOON, Stage.LANDED, Stage.BAGGAGE, Stage.COMPLETED ->
                 "$flightNumber • ${state.arrivalTime.toFormattedTime()} • $stageTitle"
@@ -598,6 +614,7 @@ object LiveUpdateManager {
             Stage.BOARDING_PENDING -> state.message.orDash()
             Stage.BOARDING    -> state.message.orDash()
             Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate.orDash())
+            Stage.DEPARTURE_PENDING -> buildEstimatedFlightTime(context, state)
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
             Stage.LANDING_SOON -> state.message.orDash()
             Stage.LANDED      -> if (state.baggageCarousel.isNullOrBlank() || state.baggageCarousel == "--") {

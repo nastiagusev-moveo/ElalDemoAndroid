@@ -21,6 +21,8 @@
     <string name="notif_content_gate_ready">שער: %s</string>
     <string name="notif_content_boarding">האזור שלך: %s</string>
     <string name="notif_content_last_call">לא ניתן לעלות לאחר סגירת השער: %s</string>
+    <!-- Approximate flight time (appended to the server-sent DEPARTURE_PENDING message) -->
+    <string name="notif_flight_time">%1$dh:%2$02dm</string>
     <string name="notif_content_departed">נחיתה בעוד %1$d שעות %2$d דקות</string>
     <string name="notif_content_departed_minutes">נחיתה בעוד %1$d דקות</string>
     <string name="notif_content_landing_soon">נחיתה ברגעים אלה</string>

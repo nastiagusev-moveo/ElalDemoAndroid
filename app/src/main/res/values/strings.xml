@@ -17,6 +17,7 @@
     <string name="status_boarding_pending">Awaiting Boarding</string>
     <string name="status_boarding">Boarding</string>
     <string name="status_last_call">Last Call</string>
+    <string name="status_departure_pending">Departing Soon</string>
     <string name="status_departed">On The Way</string>
     <string name="status_landing_soon">Landing Soon</string>
     <string name="status_landed">Landed</string>
@@ -35,6 +36,7 @@
     <string name="detail_boarding_pending">Boarding soon at gate: %s</string>
     <string name="detail_boarding">Gate: %s</string>
     <string name="detail_last_call">No boarding after gate closes: %s</string>
+    <string name="detail_departure_pending">Departing at %s</string>
     <string name="detail_departed">Landing at %s</string>
     <string name="detail_landing_soon">Landing soon at %s</string>
     <string name="detail_landed">Welcome to %s</string>

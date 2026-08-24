@@ -43,6 +43,7 @@ internal object AnalyticsPayloadBuilder {
         Stage.BOARDING_PENDING -> "Boarding pending"
         Stage.BOARDING -> "Boarding starts"
         Stage.LAST_CALL -> "Last call"
+        Stage.DEPARTURE_PENDING -> "Departure pending"
         Stage.DEPARTED -> "Flight departs"
         Stage.LANDING_SOON -> "Landing soon"
         Stage.LANDED -> "Arrival"

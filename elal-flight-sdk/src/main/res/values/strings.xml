@@ -21,6 +21,8 @@
     <string name="notif_content_gate_ready">Gate: %s</string>
     <string name="notif_content_boarding">Your zone: %s</string>
     <string name="notif_content_last_call">No boarding after gate closes: %s</string>
+    <!-- Approximate flight time (appended to the server-sent DEPARTURE_PENDING message) -->
+    <string name="notif_flight_time">%1$dh:%2$02dm</string>
     <string name="notif_content_departed">Landing in %1$dh %2$dmin</string>
     <string name="notif_content_departed_minutes">Landing in %1$dmin</string>
     <string name="notif_content_landing_soon">Landing soon</string>
