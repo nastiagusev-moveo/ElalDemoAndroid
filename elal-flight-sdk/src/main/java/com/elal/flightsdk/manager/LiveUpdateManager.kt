@@ -612,8 +612,11 @@ object LiveUpdateManager {
             Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters.orDash())
             Stage.GATE_READY  -> combineLabelAndValue(state.message, combineLabelAndValue(state.gateTitle, state.gate.orDash()))
             Stage.BOARDING_PENDING -> state.message.orDash()
-            Stage.BOARDING    -> state.message.orDash()
-            Stage.LAST_CALL   -> combineLabelAndValue(state.title, state.gate.orDash())
+            Stage.BOARDING    -> state.gate
+                ?.takeIf { it.isNotBlank() && it != "--" }
+                ?.let { combineLabelAndValue(state.message, combineLabelAndValue(state.gateTitle, it)) }
+                ?: state.message.orDash()
+            Stage.LAST_CALL   -> combineLabelAndValue(state.title, combineLabelAndValue(state.gateTitle, state.gate.orDash()))
             Stage.DEPARTURE_PENDING -> buildEstimatedFlightTime(context, state)
             Stage.DEPARTED    -> buildDepartedCountdown(context, state)
             Stage.LANDING_SOON -> state.message.orDash()
