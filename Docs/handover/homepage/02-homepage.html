@@ -1,0 +1,1283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homepage Switch Handover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f8;
+  --text: #0f1b2d;
+  --muted: #5b6b82;
+  --border: #dbe2ec;
+  --accent: #1c4fd1;
+  --accent-soft: #e3ebff;
+  --navy: #0b2a5b;
+  --ok: #18865a;
+  --ok-soft: #dff3ea;
+  --warn: #a96500;
+  --warn-soft: #fff1d6;
+  --danger: #c0352b;
+  --danger-soft: #fde4e1;
+  --code-bg: #0f1b2d;
+  --code-text: #e4ebf7;
+  --pre: #6a4fd1;
+  --pre-soft: #ece7ff;
+  --fly: #1c4fd1;
+  --fly-soft: #e3ebff;
+  --arr: #0f8a7e;
+  --arr-soft: #dcf3f0;
+  --end: #5b6b82;
+  --end-soft: #e9edf3;
+  --shadow: 0 1px 2px rgba(15,27,45,.06), 0 8px 24px rgba(15,27,45,.06);
+  --phone: #11161f;
+  --notif: #ffffff;
+  --notif-text: #11161f;
+  --notif-muted: #59606b;
+  --track: #d5dbe5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b111b;
+    --surface: #121a27;
+    --surface-2: #182234;
+    --text: #e6ecf5;
+    --muted: #94a3b8;
+    --border: #253248;
+    --accent: #7aa2ff;
+    --accent-soft: #1b2a4d;
+    --navy: #c9d7f5;
+    --ok: #4ccf93;
+    --ok-soft: #12332a;
+    --warn: #f3b44b;
+    --warn-soft: #3a2a0f;
+    --danger: #ff7b6e;
+    --danger-soft: #3d1a17;
+    --code-bg: #070b12;
+    --code-text: #dbe4f3;
+    --pre: #ad98ff;
+    --pre-soft: #261f45;
+    --fly: #7aa2ff;
+    --fly-soft: #1b2a4d;
+    --arr: #4fd1c1;
+    --arr-soft: #11312e;
+    --end: #94a3b8;
+    --end-soft: #1f2a3b;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --phone: #000000;
+    --notif: #1d2430;
+    --notif-text: #eef2f8;
+    --notif-muted: #a5afbe;
+    --track: #3a4557;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b111b;
+  --surface: #121a27;
+  --surface-2: #182234;
+  --text: #e6ecf5;
+  --muted: #94a3b8;
+  --border: #253248;
+  --accent: #7aa2ff;
+  --accent-soft: #1b2a4d;
+  --navy: #c9d7f5;
+  --ok: #4ccf93;
+  --ok-soft: #12332a;
+  --warn: #f3b44b;
+  --warn-soft: #3a2a0f;
+  --danger: #ff7b6e;
+  --danger-soft: #3d1a17;
+  --code-bg: #070b12;
+  --code-text: #dbe4f3;
+  --pre: #ad98ff;
+  --pre-soft: #261f45;
+  --fly: #7aa2ff;
+  --fly-soft: #1b2a4d;
+  --arr: #4fd1c1;
+  --arr-soft: #11312e;
+  --end: #94a3b8;
+  --end-soft: #1f2a3b;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --phone: #000000;
+  --notif: #1d2430;
+  --notif-text: #eef2f8;
+  --notif-muted: #a5afbe;
+  --track: #3a4557;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 72px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.6 Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+code { font-size: .86em; background: var(--surface-2); border: 1px solid var(--border); padding: .08em .38em; border-radius: 5px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+h1, h2, h3 { line-height: 1.25; margin: 0; }
+h2 { font-size: 1.55rem; letter-spacing: -.01em; }
+h3 { font-size: 1.05rem; }
+p { margin: .5rem 0; }
+
+/* top bar */
+.topbar {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px; background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.brand .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; color: #fff; }
+.topbar .spacer { flex: 1; }
+.btn {
+  appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+a.btn { text-decoration: none; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* layout */
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); max-width: 1240px; margin: 0 auto; gap: 32px; padding: 0 20px; }
+nav.toc { position: sticky; top: 72px; align-self: start; padding: 24px 0; max-height: calc(100vh - 72px); overflow: auto; }
+nav.toc a { display: block; padding: 6px 12px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; border-left: 2px solid transparent; }
+nav.toc a:hover { color: var(--text); background: var(--surface-2); }
+nav.toc a.active { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+nav.toc .toc-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 12px 8px; font-weight: 600; }
+main { padding: 24px 0 96px; min-width: 0; }
+section { margin: 0 0 56px; }
+.section-head { margin-bottom: 16px; }
+.eyebrow { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .09em; color: var(--accent); margin-bottom: 6px; }
+.lead { color: var(--muted); max-width: 70ch; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+/* hero */
+.hero { padding: 28px; border-radius: 18px; background: linear-gradient(135deg, var(--navy) 0%, #1c4fd1 100%); color: #fff; position: relative; overflow: hidden; margin-bottom: 40px; }
+:root[data-theme="dark"] .hero { background: linear-gradient(135deg, #0f2147 0%, #1a3a8f 100%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero { background: linear-gradient(135deg, #0f2147 0%, #1a3a8f 100%); } }
+.hero h1 { font-size: 2rem; letter-spacing: -.02em; }
+.hero p { color: rgba(255,255,255,.82); max-width: 62ch; }
+.hero .facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.hero .fact { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.hero .fact b { font-weight: 600; }
+.hero svg.bg { position: absolute; right: -40px; top: -20px; width: 260px; opacity: .12; }
+
+/* reading progress */
+.read-progress { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: linear-gradient(90deg, var(--accent), var(--arr)); transition: width .1s linear; }
+
+/* sidebar toc */
+nav.toc .toc-list { position: relative; padding-left: 4px; }
+nav.toc .toc-list::before { content: ""; position: absolute; left: 21px; top: 14px; bottom: 14px; width: 2px; background: var(--border); border-radius: 2px; }
+nav.toc .toc-list .rail { position: absolute; left: 21px; top: 14px; width: 2px; height: 0; background: var(--accent); border-radius: 2px; transition: height .25s; }
+nav.toc a { display: flex; align-items: center; gap: 10px; position: relative; }
+nav.toc a .n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--surface); border: 2px solid var(--border); color: var(--muted); position: relative; z-index: 1; transition: all .2s; font-variant-numeric: tabular-nums; }
+nav.toc a.passed .n { border-color: var(--accent); color: var(--accent); }
+nav.toc a.active .n { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 4px var(--accent-soft); }
+nav.toc .toc-foot { margin: 14px 12px 0; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+
+/* contents cards */
+.contents-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.contents { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: c; }
+.toc-card { position: relative; display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 12px; align-items: start; padding: 14px 14px 14px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); text-decoration: none; color: var(--text); box-shadow: var(--shadow); transition: transform .18s, border-color .18s, box-shadow .18s; overflow: hidden; }
+.toc-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c, var(--accent)); opacity: .9; }
+.toc-card:hover { transform: translateY(-2px); border-color: var(--c, var(--accent)); }
+.toc-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toc-card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; background: color-mix(in srgb, var(--c, var(--accent)) 14%, transparent); }
+.toc-card .num { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--c, var(--accent)); font-variant-numeric: tabular-nums; }
+.toc-card .t { font-weight: 600; font-size: 15px; line-height: 1.3; margin: 1px 0 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toc-card .d { font-size: 13px; color: var(--muted); line-height: 1.45; }
+.toc-card .live { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: var(--ok-soft); color: var(--ok); }
+.toc-card .go { position: absolute; right: 12px; top: 12px; color: var(--muted); opacity: 0; transform: translateX(-4px); transition: all .18s; }
+.toc-card:hover .go { opacity: 1; transform: none; }
+.toc-card.visited .num::after { content: " · read"; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+
+@media (min-width: 1001px) { .toc-card:last-child:nth-child(3n+1) { grid-column: 1 / -1; } }
+/* mobile contents sheet */
+#tocBtn { display: none; }
+.toc-sheet { position: fixed; inset: 0; z-index: 40; display: none; }
+.toc-sheet.open { display: block; }
+.toc-sheet .scrim { position: absolute; inset: 0; background: rgba(5,10,20,.45); }
+.toc-sheet .panel { position: absolute; left: 12px; right: 12px; top: 60px; max-height: calc(100vh - 80px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.toc-sheet a { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; color: var(--text); text-decoration: none; font-weight: 500; }
+.toc-sheet a:hover, .toc-sheet a.active { background: var(--accent-soft); color: var(--accent); }
+.toc-sheet a .i { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); flex: none; }
+.toc-sheet a .k { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* postman collection */
+.pm { border: 1px solid color-mix(in srgb, #ff6c37 40%, var(--border)); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 18px; }
+.pm-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pm-logo { width: 42px; height: 42px; border-radius: 12px; background: #ff6c37; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: none; }
+.pm-head h3 { font-size: 1.1rem; }
+.pm-head .sub { font-size: 13px; color: var(--muted); }
+.pm-head .spacer { flex: 1; }
+.pm ol { margin: 14px 0 6px; padding-left: 20px; font-size: 14px; }
+.pm ol li { margin: 6px 0; }
+.pm .vars { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin: 8px 0 4px; }
+.pm .var { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; min-width: 0; }
+.pm .var code { background: transparent; border: 0; padding: 0; font-weight: 600; color: var(--accent); font-size: 13px; }
+.pm .var div { color: var(--muted); margin-top: 2px; }
+.pm .reqs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pm .req-chip { font-family: "JetBrains Mono", monospace; font-size: 11.5px; padding: 3px 8px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); }
+.pm .req-chip b { color: #e2541d; font-weight: 600; margin-right: 4px; }
+@media (max-width: 720px) { .pm .vars { grid-template-columns: minmax(0,1fr); } }
+
+/* callouts */
+.callout { border-radius: 12px; padding: 12px 16px; border: 1px solid; margin: 12px 0; font-size: 14px; }
+.callout.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.callout.danger { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.callout.info { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.callout.ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.callout b:first-child { display: block; margin-bottom: 2px; }
+
+/* repo flow */
+.repo-flow { display: grid; grid-template-columns: minmax(0,1fr) 110px minmax(0,1fr); align-items: stretch; gap: 0; }
+.repo { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); }
+.repo .tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.repo.dev .tag { background: var(--pre-soft); color: var(--pre); }
+.repo.prod .tag { background: var(--arr-soft); color: var(--arr); }
+.repo h3 { margin: 8px 0 2px; }
+.repo .path { color: var(--muted); font-size: 13px; }
+.repo ul { padding-left: 18px; margin: 10px 0 0; font-size: 14px; }
+.repo li { margin: 4px 0; }
+.flow-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 12px; text-align: center; padding: 0 6px; }
+.flow-arrow svg { width: 90px; height: 24px; }
+.flow-arrow .dash { stroke-dasharray: 6 5; animation: dash 1.2s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -11; } }
+@media (prefers-reduced-motion: reduce) { .flow-arrow .dash { animation: none; } }
+
+/* steps */
+.steps { counter-reset: step; display: grid; gap: 12px; }
+.step { display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); transition: border-color .2s, opacity .2s; }
+.step.done { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.step.done .step-body > *:not(.step-title) { opacity: .62; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent-soft); color: var(--accent); cursor: pointer; border: 0; font-family: inherit; }
+.step.done .step-num { background: var(--ok); color: #fff; }
+.step-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+.step-title .who { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.progress-line { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+.progress-line .meter { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.progress-line .meter i { display: block; height: 100%; background: var(--ok); width: 0; transition: width .3s; }
+
+/* code blocks */
+.code { position: relative; margin: 10px 0; }
+.code pre { margin: 0; background: var(--code-bg); color: var(--code-text); padding: 14px 16px; padding-right: 76px; border-radius: 10px; overflow-x: auto; font-size: 12.5px; line-height: 1.55; white-space: pre; }
+.code .copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,.08); color: #dbe4f3; border-color: rgba(255,255,255,.18); }
+.code .copy.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+.code pre .path-hl { font-weight: 700; color: #1b1300; background: #ffcf4a; padding: 1px 4px; border-radius: 4px; }
+.code pre .path-hl.set { background: #4ccf93; color: #04140c; }
+.code .label { position: absolute; top: -9px; left: 12px; font-size: 10.5px; background: var(--accent); color: #fff; padding: 1px 8px; border-radius: 999px; font-weight: 600; letter-spacing: .04em; }
+
+/* forms */
+label.field { display: grid; gap: 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+input[type=text], select, textarea {
+  font: inherit; font-size: 14px; color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; width: 100%; min-width: 0;
+}
+input.mono, textarea.mono { font-family: "JetBrains Mono", monospace; font-size: 12.5px; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 600; }
+
+/* token timer */
+.timer { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); }
+.timer .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.timer.fresh .dot { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+.timer.aging .dot { background: var(--warn); box-shadow: 0 0 0 4px var(--warn-soft); }
+.timer.dead .dot { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft); }
+.timer .t { font-variant-numeric: tabular-nums; }
+
+/* stage explorer */
+.flow-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 18px; }
+.chip {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: 12.5px;
+  font-weight: 600; padding: 6px 11px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: "JetBrains Mono", monospace;
+}
+.chip .pdot { width: 7px; height: 7px; border-radius: 50%; }
+.chip[data-phase="pre"] .pdot { background: var(--pre); }
+.chip[data-phase="fly"] .pdot { background: var(--fly); }
+.chip[data-phase="arr"] .pdot { background: var(--arr); }
+.chip[data-phase="end"] .pdot { background: var(--end); }
+.chip[data-phase="err"] .pdot { background: var(--danger); }
+.chip.new::after { content: "NEW"; font-size: 9px; letter-spacing: .06em; background: var(--warn-soft); color: var(--warn); padding: 1px 5px; border-radius: 4px; font-family: Inter, sans-serif; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.chip-arrow { color: var(--muted); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.explorer { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 20px; align-items: start; }
+.phone { background: var(--phone); border-radius: 34px; padding: 14px 12px 22px; box-shadow: var(--shadow); position: relative; }
+.phone .status { display: flex; justify-content: space-between; color: #fff; font-size: 12px; padding: 2px 14px 10px; font-weight: 600; }
+.phone .wall { border-radius: 22px; padding: 16px 10px; min-height: 290px; background: radial-gradient(120% 80% at 20% 0%, #23407e 0%, #0d1830 60%, #070c18 100%); }
+.phone .clock { color: #fff; text-align: center; font-size: 44px; font-weight: 300; letter-spacing: -.02em; margin: 6px 0 2px; }
+.phone .date { color: rgba(255,255,255,.75); text-align: center; font-size: 13px; margin-bottom: 18px; }
+.notif { background: var(--notif); color: var(--notif-text); border-radius: 20px; padding: 12px 14px 14px; transition: opacity .25s, transform .25s; }
+.notif.gone { opacity: 0; transform: translateY(8px) scale(.98); }
+.notif .app { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--notif-muted); margin-bottom: 6px; }
+.notif .app .ic { width: 18px; height: 18px; border-radius: 50%; background: #1c4fd1; display: grid; place-items: center; }
+.notif .ttl { font-weight: 600; font-size: 14px; line-height: 1.35; }
+.notif .txt { font-size: 13.5px; color: var(--notif-muted); white-space: pre-line; margin-top: 2px; min-height: 1.4em; }
+.pbar { position: relative; margin-top: 14px; height: 22px; }
+.pbar .segs { position: absolute; left: 0; right: 0; top: 8px; display: flex; gap: 3px; }
+.pbar .s { height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.pbar .s i { display: block; height: 100%; background: #1c4fd1; width: 0; transition: width .5s; }
+:root[data-theme="dark"] .pbar .s i { background: #7aa2ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pbar .s i { background: #7aa2ff; } }
+.pbar .plane { position: absolute; top: 0; width: 22px; height: 22px; margin-left: -11px; transition: left .5s, opacity .3s; color: var(--notif-text); background: var(--notif); border-radius: 50%; display: grid; place-items: center; }
+.pbar .plane svg { width: 16px; height: 16px; transition: transform .3s; }
+.ended-msg { color: rgba(255,255,255,.75); text-align: center; font-size: 13px; padding: 30px 10px; display: none; }
+.phone-caption { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+.detail h3 { font-size: 1.25rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.detail .phase-pill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .06em; }
+.phase-pill.pre { background: var(--pre-soft); color: var(--pre); }
+.phase-pill.fly { background: var(--fly-soft); color: var(--fly); }
+.phase-pill.arr { background: var(--arr-soft); color: var(--arr); }
+.phase-pill.end { background: var(--end-soft); color: var(--end); }
+.phase-pill.err { background: var(--danger-soft); color: var(--danger); }
+.kv { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 6px 14px; font-size: 14px; margin: 12px 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+.fieldchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fieldchips code { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.detail ul { padding-left: 18px; margin: 6px 0; }
+.detail li { margin: 4px 0; font-size: 14px; }
+.explorer-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--surface-2); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.badge.same { background: var(--ok-soft); color: var(--ok); }
+.badge.new { background: var(--warn-soft); color: var(--warn); }
+.badge.gone { background: var(--danger-soft); color: var(--danger); }
+.badge.chg { background: var(--accent-soft); color: var(--accent); }
+td.strike { text-decoration: line-through; color: var(--muted); }
+
+/* builder */
+.builder { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 18px; align-items: start; }
+.builder .form { display: grid; gap: 12px; }
+.builder .row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.builder .group-title { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; }
+.builder .out { position: sticky; top: 80px; display: grid; gap: 10px; }
+.validation { font-size: 13px; display: grid; gap: 6px; }
+.validation div { padding: 7px 10px; border-radius: 8px; }
+.validation .e { background: var(--danger-soft); color: var(--danger); }
+.validation .w { background: var(--warn-soft); color: var(--warn); }
+.validation .k { background: var(--ok-soft); color: var(--ok); }
+.req::after { content: " *"; color: var(--danger); }
+.toggle { display: block; font-size: 13px; color: var(--muted); cursor: pointer; }
+.toggle input { margin: 0 6px 0 0; vertical-align: -2px; }
+.toggle code { white-space: nowrap; }
+.endpoint { font-size: 12.5px; padding: 9px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+.endpoint b { color: var(--ok); margin-right: 6px; }
+
+/* accordion */
+details.acc { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; box-shadow: var(--shadow); }
+details.acc summary { cursor: pointer; padding: 12px 16px; font-weight: 600; list-style: none; display: flex; gap: 10px; align-items: center; }
+details.acc summary::-webkit-details-marker { display: none; }
+details.acc summary::before { content: "›"; font-size: 18px; color: var(--muted); transition: transform .2s; width: 10px; }
+details.acc[open] summary::before { transform: rotate(90deg); }
+details.acc .acc-body { padding: 0 16px 14px 36px; font-size: 14px; }
+details.acc .sym { font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--danger-soft); color: var(--danger); font-weight: 500; }
+.search { margin-bottom: 12px; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; flex-wrap: wrap; }
+.tabs button { border: 0; background: none; font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); padding: 8px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+
+.floating-timer { position: fixed; right: 16px; bottom: 16px; z-index: 30; box-shadow: var(--shadow); display: none; }
+.floating-timer.show { display: inline-flex; }
+
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); padding-top: 18px; }
+.byline { display: inline-flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 13px; color: rgba(255,255,255,.85); }
+.byline .av, .sign .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; letter-spacing: .02em; flex: none; }
+.byline .av { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35); color: #fff; }
+.byline b { color: #fff; font-weight: 600; }
+.sign { display: flex; align-items: center; gap: 16px; padding: 20px 22px; margin-bottom: 18px; border-radius: 16px; background: linear-gradient(135deg, var(--accent-soft), var(--surface)); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.sign .av { width: 52px; height: 52px; font-size: 18px; background: var(--accent); color: #fff; box-shadow: 0 0 0 4px var(--accent-soft); }
+.sign .who { font-weight: 700; font-size: 17px; color: var(--text); }
+.sign .role { font-size: 13px; color: var(--muted); }
+.sign .note { font-size: 14px; color: var(--text); margin-top: 6px; font-style: italic; }
+.sign .heart { color: var(--danger); font-style: normal; }
+
+@media (max-width: 1000px) {
+  #tocBtn { display: inline-flex; }
+  .contents { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .layout { grid-template-columns: minmax(0, 1fr); padding: 0 16px; }
+  nav.toc { display: none; }
+  .explorer, .builder { grid-template-columns: minmax(0, 1fr); }
+  .builder .out { position: static; }
+  .phone { max-width: 340px; margin: 0 auto; }
+}
+@media (max-width: 720px) {
+  .grid-2, .grid-3, .contents { grid-template-columns: minmax(0,1fr); }
+  .repo-flow { grid-template-columns: minmax(0,1fr); }
+  .flow-arrow { padding: 10px 0; }
+  .flow-arrow svg { transform: rotate(90deg); }
+  .hero { padding: 22px 18px; }
+  .hero h1 { font-size: 1.55rem; }
+  .kv { grid-template-columns: minmax(0,1fr); gap: 2px; }
+  .kv dd { margin-bottom: 8px; }
+  .builder .row { grid-template-columns: minmax(0,1fr); }
+  .topbar { padding: 10px 16px; }
+  .topbar .hide-sm { display: none; }
+}
+
+/* ---- part 2: simulators ---- */
+.group-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
+ol.path { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+ol.path li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; background: var(--surface-2); transition: all .2s; }
+ol.path li .m { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+ol.path li.skip { opacity: .55; }
+ol.path li.skip .m { color: var(--danger); }
+ol.path li.win { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+ol.path li.win .m { background: var(--accent); border-color: var(--accent); color: #fff; }
+ol.path li.off { opacity: .35; }
+.result { border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); background: var(--surface-2); }
+.result.new { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.result.old { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.result.other { background: var(--pre-soft); border-color: color-mix(in srgb, var(--pre) 40%, transparent); }
+.result .r-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.result .r-dest code { font-size: 1.05rem; font-weight: 600; background: var(--surface); }
+.result .r-dest { margin: 4px 0; }
+.result .r-note { font-weight: 600; }
+.result .r-flag { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.step .step-num { cursor: default; }
+.stack { display: grid; gap: 8px; }
+.stack .blk { border-radius: 12px; padding: 10px 12px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); display: grid; gap: 2px; font-size: 13.5px; }
+.stack .blk > span { color: var(--muted); font-size: 12.5px; }
+.stack .blk.pin { background: var(--end-soft); }
+.stack .blk.hero { background: linear-gradient(135deg, var(--navy), #1c4fd1); color: #fff; border: 0; }
+.stack .blk.hero > span { color: rgba(255,255,255,.8); }
+.stack .blk.hero code { background: rgba(255,255,255,.15); border-color: transparent; color: #fff; }
+.stack .blk.slot { margin-top: 8px; background: var(--surface); color: var(--text); border: 2px dashed var(--accent); box-shadow: none; }
+.stack .blk.slot > span { color: var(--muted); }
+.stack .blk.slot code { background: var(--surface-2); color: var(--text); }
+.stack .blk.sec { grid-template-columns: 26px minmax(0,1fr); column-gap: 10px; align-items: center; }
+.stack .blk.sec .num { grid-row: span 2; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; }
+.stack .blk.gone { background: transparent; border-style: dashed; box-shadow: none; opacity: .8; }
+.stack .o { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); margin-left: 4px; }
+.stack .o.un { background: var(--warn-soft); color: var(--warn); }
+input.ord { padding: 5px 8px; }
+
+/* ---- my flights card schematic ---- */
+.mf { border-radius: 18px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+.mf.gone { border-style: dashed; box-shadow: none; padding: 22px; text-align: center; color: var(--muted); }
+.mf-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; }
+.mf-head .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.mf-body { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0; }
+.mf-cell { padding: 12px 14px; font-size: 13.5px; display: grid; gap: 4px; align-content: start; }
+.mf-cell + .mf-cell { border-left: 1px solid var(--border); }
+.mf-cell .k { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mf-cell .v { font-weight: 600; }
+.mf-cell .d { color: var(--muted); font-size: 12.5px; }
+.mf-foot { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mf-btn { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; }
+.mf-btn.open { background: #1c4fd1; color: #fff; }
+.mf-btn.done { border: 2px solid #1c4fd1; color: var(--accent); }
+.mf-btn.link { color: var(--accent); text-decoration: underline; padding-left: 0; }
+.mf-btn.badge { background: var(--warn-soft); color: var(--warn); }
+.mf-btn.pill7k { background: var(--accent-soft); color: var(--accent); }
+.mf-tap { padding: 12px 14px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 13.5px; }
+.mf-tap b { color: var(--accent); }
+.mf-why { font-size: 12.5px; color: var(--muted); margin-top: 10px; display: grid; gap: 3px; }
+@media (max-width: 720px) { .mf-body { grid-template-columns: minmax(0,1fr); } .mf-cell + .mf-cell { border-left: 0; border-top: 1px solid var(--border); } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
+    <span>Homepage <span class="hide-sm" style="font-weight:500;color:var(--muted)">· Handover 02</span></span>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="tocBtn" aria-expanded="false" aria-controls="tocSheet">☰ Contents</button>
+  <button class="btn" id="themeBtn" aria-label="Toggle colour theme">◐ <span id="themeLabel">Auto</span></button>
+  <div class="read-progress" id="readProgress"></div>
+</header>
+<div class="toc-sheet" id="tocSheet"><div class="scrim"></div><nav class="panel" aria-label="Contents" id="tocSheetList"></nav></div>
+
+<div class="layout">
+  <nav class="toc" aria-label="Sections">
+    <div class="toc-label">On this page</div>
+    <div class="toc-list" id="tocList"><span class="rail" id="tocRail"></span></div>
+    <div class="toc-foot"><span id="tocPct">0% read</span><span id="tocMins"></span></div>
+  </nav>
+
+  <main>
+    <div class="hero" id="overview">
+      <svg class="bg" viewBox="0 0 24 24" fill="#fff"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <div class="eyebrow" style="color:rgba(255,255,255,.75)">Project handover · part 2</div>
+      <h1>Old homepage, new homepage, and the switch</h1>
+      <p>The El Al app has two homepages living side by side: the original <b>XML</b> screen and the new <b>Jetpack Compose</b> screen. One server flag decides which one a user gets. This page explains both screens, exactly how the flag is resolved, and what the Home tab opens before either homepage is even considered.</p>
+      <div class="byline"><span class="av" aria-hidden="true">NN</span><span>Crafted with care by <b>Netanel Boris Niazov</b> · October 2026</span></div>
+      <div class="facts">
+        <span class="fact">Repo <b>~/Android</b> (production app)</span>
+        <span class="fact">Flag <b>newHomePageEnabled</b></span>
+        <span class="fact">Source <b>GetAppData → ConfigurationList</b></span>
+        <span class="fact">One fragment: <b>HomeFragment</b>, two UIs</span>
+        <span class="fact">Missing flag = <b>old homepage</b></span>
+      </div>
+    </div>
+
+    <section id="contents" aria-labelledby="contentsTitle">
+      <div class="contents-head">
+        <div>
+          <div class="eyebrow">Table of contents</div>
+          <h2 id="contentsTitle">What's in this handover</h2>
+        </div>
+        <span class="lead" style="font-size:13px" id="contentsMeta"></span>
+      </div>
+      <div class="contents" id="contentsGrid"></div>
+    </section>
+
+    <!-- HOW THE SWITCH WORKS -->
+    <section id="switch">
+      <div class="section-head">
+        <div class="eyebrow">The core idea</div>
+        <h2>How the switch works</h2>
+        <p class="lead">There is no separate "new home" screen in navigation. Both homepages are the same destination, <code>homeFragment</code>, and <code>HomeFragment</code> decides what to draw the moment its view is created.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="eyebrow">1 · Server</div>
+          <h3>Sends a number</h3>
+          <p class="lead" style="font-size:14px"><code>GetAppData</code> returns <code>ConfigurationList.newHomePageEnabled</code>, a <em>display-mode code</em>. It's fetched on the splash screen and kept in memory in <code>AppData</code>.</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">2 · Resolve</div>
+          <h3>Code vs. user mode</h3>
+          <p class="lead" style="font-size:14px"><code>AppConfig.Home</code> turns a missing value into <code>3</code>, then <code>DisplayModeUseCase</code> checks the code against the user's mode (guests count as adults).</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">3 · Render</div>
+          <h3>One fragment, two UIs</h3>
+          <p class="lead" style="font-size:14px"><code>HomeFragment.onCreateView</code>: <b>false</b> → inflate the XML layout. <b>true</b> → return a <code>ComposeView</code> hosting <code>NewHomeScreen</code>.</p>
+        </div>
+      </div>
+
+      <h3 style="margin:24px 0 8px">The display-mode codes</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Server value</th><th>Meaning</th><th>Who gets the new homepage</th></tr></thead>
+          <tbody>
+            <tr><td><em>missing / null</em></td><td>Not configured. <code>AppConfig</code> replaces it with <code>3</code>.</td><td><span class="badge gone">Nobody</span> (old homepage)</td></tr>
+            <tr><td><code>0</code></td><td>Show to everyone</td><td><span class="badge same">Everyone</span></td></tr>
+            <tr><td><code>1</code></td><td>Youth users only (mode 1)</td><td><span class="badge new">Youth only</span>, but youth users open Youth World instead (see the simulator)</td></tr>
+            <tr><td><code>2</code></td><td>Adults only (mode 2). Guests count as adults.</td><td><span class="badge chg">Adults + guests</span></td></tr>
+            <tr><td><code>3</code></td><td>Always hide</td><td><span class="badge gone">Nobody</span> (old homepage)</td></tr>
+            <tr><td>any negative</td><td>Treated as "no value", so always show</td><td><span class="badge same">Everyone</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><b>Missing means OLD, not new.</b><code>DisplayModeResolver</code> on its own treats <code>null</code> as "show". The homepage never reaches it with <code>null</code>, though, because <code>AppConfig.Home.newHomePageEnabled</code> falls back to <code>3</code> first. The comment on the field in <code>ConfigurationListResponse.kt</code> ("any other value keeps the new Compose homepage") is also too simple: <code>1</code> and <code>2</code> limit it to one audience.</div>
+
+      <h3 style="margin:24px 0 8px">Everywhere the flag is read</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Where</th><th>What it changes</th></tr></thead>
+          <tbody>
+            <tr><td><code>HomeFragment.isNewHomeEnabled</code></td><td>Which UI is drawn, plus every lifecycle branch: Adobe <code>pushState</code> (old only), event subscriptions, <code>onResume</code> refresh, rate-us check (<code>RatingConsts.NEW_HOME</code>), cleanup in <code>onDestroyView</code>.</td></tr>
+            <tr><td><code>NewHomeViewModel.isNewHomeEnabled</code></td><td>Read by <code>HomeFragmentWrapper</code>. With the old homepage, an upcoming flight takes over the Home tab (see next section).</td></tr>
+            <tr><td><code>MainActivityViewModel.isNewHomePageEnabled</code></td><td>Which tab hosts "no history" screens opened by deep link (Flight Tracker, Tracked Flights, Flight Info, Stickers). New: the <b>Home</b> tab, so Back returns to the homepage. Old: the <b>Menu</b> tab.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SIMULATOR -->
+    <section id="simulator">
+      <div class="section-head">
+        <div class="eyebrow">Interactive</div>
+        <h2>Simulator: what does the Home tab open?</h2>
+        <p class="lead">Set the server flag and the user's situation. The simulator follows the same order as <code>HomeFragmentWrapper.setNavigationStartDestinationByUserState()</code> and then <code>HomeFragment</code>, and shows which rule decides.</p>
+      </div>
+
+      <div class="card">
+        <div class="grid-2" style="gap:18px">
+          <div style="display:grid;gap:14px">
+            <div>
+              <div class="group-label">Server <code>newHomePageEnabled</code></div>
+              <div class="seg" id="simFlag" role="group" aria-label="Server flag value">
+                <button data-v="null" aria-pressed="false">missing</button>
+                <button data-v="-1" aria-pressed="false">-1</button>
+                <button data-v="0" aria-pressed="true">0</button>
+                <button data-v="1" aria-pressed="false">1</button>
+                <button data-v="2" aria-pressed="false">2</button>
+                <button data-v="3" aria-pressed="false">3</button>
+              </div>
+            </div>
+            <div>
+              <div class="group-label">User</div>
+              <div class="seg" id="simUser" role="group" aria-label="User type">
+                <button data-v="guest" aria-pressed="true">Guest</button>
+                <button data-v="adult" aria-pressed="false">Adult (mode 2)</button>
+                <button data-v="youth" aria-pressed="false">Youth (mode 1)</button>
+                <button data-v="both" aria-pressed="false">Mode 0</button>
+              </div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="simFlight"> Has an upcoming flight (<code>nextFlightForHomeFragment</code>)</label>
+            <label class="toggle"><input type="checkbox" id="simDot"> Day of Travel feature is on for this user (<code>dayOfTravelEnabled</code>)</label>
+            <label class="toggle"><input type="checkbox" id="simDotReq"> Day of Travel takes over now: feature on + flight inside the travel window at launch, or the Day of Travel tab was tapped</label>
+          </div>
+          <div>
+            <div class="group-label">Decision path</div>
+            <ol class="path" id="simPath"></ol>
+            <div class="result" id="simResult"></div>
+          </div>
+        </div>
+      </div>
+      <div class="callout info"><b>Why "Youth (mode 1)" never reaches a homepage.</b>Youth users are in Youth World mode (<code>UserManager.isYouthWorldMode</code>), and that is the wrapper's first rule. So flag value <code>1</code> ("youth only") gives the new homepage to people who never see the homepage. In practice it behaves like "nobody".</div>
+    </section>
+
+    <!-- WRAPPER -->
+    <section id="wrapper">
+      <div class="section-head">
+        <div class="eyebrow">Before the homepage</div>
+        <h2>The Home tab's gatekeeper: <code>HomeFragmentWrapper</code></h2>
+        <p class="lead">The Home tab hosts a nested nav graph, <code>home_wrapper_navigation.xml</code>. Its start destination is a blank <code>DummyHomeFragment</code>, and the wrapper replaces it with the real start screen. The rules run top to bottom and the first match wins.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="step-num" aria-hidden="true">1</span><div class="step-body"><div class="step-title">Youth World mode → <code>youthWorldPreviewFragment</code></div><p>No homepage at all.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">2</span><div class="step-body"><div class="step-title">Pending "open Day of Travel" request → <code>dayOfTravelFragment</code></div><p>Set at launch when the Day of Travel feature is on <b>and</b> the flight is inside the travel window (<code>shouldOpenOnDayOfTravelTab</code>), or when the user taps the Day of Travel tab. <b>This applies to the new homepage too.</b> It is one-time: the request is consumed here, so the next time the Home tab is built it falls through to the rules below.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">3</span><div class="step-body"><div class="step-title">Upcoming flight <b>and the old homepage</b> → flight takeover</div><p>Day of Travel on → <code>dayOfTravelFragment</code>. Off → <code>homeTimelineFragment</code>. <b>The new homepage skips this rule</b>, because it shows flights in its own "My Flights" carousel. Day of Travel can still take over through rule 2.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">4</span><div class="step-body"><div class="step-title">Otherwise → <code>homeFragment</code></div><p>Here <code>HomeFragment</code> draws the old or the new homepage based on the flag.</p></div></div>
+      </div>
+      <h3 style="margin:24px 0 8px">When is this decision made again?</h3>
+      <p class="lead">The wrapper remembers which "generation" it last built for (<code>HomeFragmentWrapperHelper.resetGeneration</code>). Any code that calls <code>HomeFragmentWrapperHelper.signalReset()</code> makes it decide again the next time it runs:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Trigger</th><th>Caller</th></tr></thead>
+          <tbody>
+            <tr><td>Login</td><td><code>auth/…/SharedLoginUseCase.kt</code> (the wrapper also listens for <code>SuccessLogin</code>)</td></tr>
+            <tr><td>Logout</td><td><code>app/…/managers/LogoutManager.kt</code></td></tr>
+            <tr><td>Youth / adult mode switch</td><td><code>core/…/YouthWorldModeSwitcherUseCase.kt</code></td></tr>
+            <tr><td>Active flights changed</td><td><code>core/…/ActivePnrUseCase.kt</code></td></tr>
+            <tr><td>Day of Travel tab navigation</td><td><code>MainActivity.kt</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:14px;margin-top:10px">A brand-new wrapper instance starts at generation <code>-1</code>, so it always builds its graph on first use.</p>
+    </section>
+
+    <!-- COMPARE -->
+    <section id="compare">
+      <div class="section-head">
+        <div class="eyebrow">Side by side</div>
+        <h2>Old vs. new homepage</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:150px"></th><th>Old homepage</th><th>New homepage</th></tr></thead>
+          <tbody>
+            <tr><th>UI</th><td>XML <code>fragment_home.xml</code> + ViewBinding + <code>RecyclerView</code></td><td>Jetpack Compose: <code>NewHomeScreen</code> and friends in <code>homeFragment/compose/</code></td></tr>
+            <tr><th>ViewModel</th><td><code>HomeFragmentViewModel</code></td><td><code>NewHomeViewModel</code> (≈1,500 lines; models in <code>ui/fragments/newHome/</code>)</td></tr>
+            <tr><th>Content</th><td>Full-screen background image, greeting, Matmid status + points, login button, promo carousel, crisis message, birthday button + confetti</td><td>Sticky header, crisis + birthday banners, hero carousel, flight search bar, "My Flights" cards, up to 7 server-ordered sections</td></tr>
+            <tr><th>Data</th><td><code>HomepageCarouselManager</code> (<code>homepageCarouselItems</code> from <code>GetHomepageContent</code>). Ignores <code>isActive</code>.</td><td><code>HomeSectionsManager</code> (sections from <code>GetHomepageContent</code>). Each item is filtered by <code>IsActive</code> + <code>DisplayMode</code>.</td></tr>
+            <tr><th>Upcoming flight</th><td>The Home tab is taken over by the timeline (or by Day of Travel when that feature is on) whenever there is an upcoming flight</td><td>The flight appears in the <a href="#my-flights">"My Flights" carousel</a>, and there is no timeline takeover. <b>Day of Travel still takes over</b> when the feature is on and the flight is inside the travel window (<code>IsWithinTravelWindow</code>): the app opens on Day of Travel once per launch, and again from the Day of Travel tab. Tapping a "My Flights" card also opens Day of Travel.</td></tr>
+            <tr><th>Fallback content</th><td>Bundled texts from the app dictionary</td><td>None. An empty section is hidden, and a missing title means no heading.</td></tr>
+            <tr><th>Analytics</th><td>Adobe <code>pushState(home_page)</code></td><td><code>logScreenView("Home")</code> + <code>HomeAnalyticsManager</code> (swipes, scroll, popups)</td></tr>
+            <tr><th>Menu access</th><td>Bottom-bar Menu tab</td><td>Header hamburger, shown only when the Day of Travel tab bar is on</td></tr>
+            <tr><th>QA guide</th><td>—</td><td><code>app/…/ui/fragments/newHome/QA_README.md</code> (scenarios + implementation status)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ANATOMY -->
+    <section id="anatomy">
+      <div class="section-head">
+        <div class="eyebrow">Interactive</div>
+        <h2>New homepage anatomy &amp; section order</h2>
+        <p class="lead">The top of the page is fixed. Everything below it is ordered by the server's <code>Order</code> per section. Change the numbers below to see the layout <code>NewHomeScreen</code> would produce.</p>
+      </div>
+      <div class="callout warn" role="note"><b>⚠ Diagram only, not the real UI.</b>The stack on the right is a schematic of the structure, not a picture of the app.</div>
+
+      <div class="builder">
+        <div class="card">
+          <label class="toggle" style="margin-bottom:12px"><input type="checkbox" id="ordFlight"> User has an upcoming flight</label>
+          <div class="table-wrap" style="box-shadow:none">
+            <table id="ordTable">
+              <thead><tr><th>Section → server key</th><th style="width:84px">Order</th><th style="width:64px">Items</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+            <button class="btn" id="ordReset">Reset (all 0)</button>
+            <button class="btn" id="ordShuffle">Random server order</button>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-top:10px">Rules (<code>NewHomeViewModel.buildSectionOrder</code>): sections with an <code>Order</code> above 0 come first, ascending. <code>0</code> or missing means "unplaced": those keep the declaration order of <code>HomeSectionType</code> and come after. Sections with no items are dropped.</p>
+        </div>
+        <div class="out">
+          <div class="stack" id="ordStack" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- MY FLIGHTS -->
+    <section id="my-flights">
+      <div class="section-head">
+        <div class="eyebrow">New homepage</div>
+        <h2>The "My Flights" carousel</h2>
+        <p class="lead">When the user has an upcoming flight, the new homepage shows a swipeable row of flight cards in the hero's bottom slot, right under the search bar. This replaces the old homepage's habit of handing the whole Home tab to the timeline. Code: <code>NewHomeViewModel.observeMyFlights()</code> / <code>buildMyFlights()</code>, models in <code>ui/fragments/newHome/MyFlight*.kt</code>, UI in <code>homeFragment/compose/MyFlights.kt</code>.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="eyebrow">Data</div>
+          <h3>Same flights as the Trips tab</h3>
+          <p class="lead" style="font-size:14px">It listens to <code>PnrsFetcherHelper.activePnrsState</code> (the stream the Trips tab uses) and reads <code>PnrHolder.pnrList</code>. Login, logout and refreshes flow through automatically.</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Refresh</div>
+          <h3>Ticks every 60 s</h3>
+          <p class="lead" style="font-size:14px">The cards are rebuilt on every PNR update and once a minute, so the countdown and the destination's local time stay live while the homepage is open.</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Loading</div>
+          <h3>Skeleton card</h3>
+          <p class="lead" style="font-size:14px">Shown while PNRs are loading <b>and</b> the user is expected to have a flight (<code>currentFlightPnrResponse != null</code>). That way a guest never sees a phantom card. Debug: <code>IS_MY_FLIGHTS_SKELETON_TEST</code>.</p>
+        </div>
+      </div>
+
+      <h3 style="margin:24px 0 8px">Which flights get a card</h3>
+      <div class="steps">
+        <div class="step"><span class="step-num" aria-hidden="true">1</span><div class="step-body"><div class="step-title">Every flight of every active PNR</div><p>Flights are flattened across all bookings, then <b>sorted by departure time</b>, not by booking order.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">2</span><div class="step-body"><div class="step-title">Waiting-list duplicates collapse to one card</div><p>A passenger wait-listed in two cabins of the same flight gets one card. The key is flight number + departure date, and only waiting-list flights are de-duplicated.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">3</span><div class="step-body"><div class="step-title">Dropped cards</div><p>A flight with missing legs or departure date. Any flight <b>3 hours after its scheduled landing</b>, timezone-aware (<code>didPassGraceWindowAfterLanding</code>). A flight operated by another airline as soon as it is flown. The card stays visible during the flight itself.</p></div></div>
+      </div>
+      <div class="callout warn"><b>Comment vs. code: 3 hours, not 4.</b>A comment in <code>NewHomeViewModel.mapFlightToMyFlightItem</code> talks about a "4-hour grace window after the scheduled landing". The constant <code>HOURS_TO_KEEP_FLIGHT_AFTER_LANDING</code> in <code>PNRFlightResponse.kt</code> is <code>3</code>.</div>
+
+      <h3 style="margin:24px 0 8px">Card variants</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variant (<code>MyFlightCardStatus</code>)</th><th>When</th><th>What changes</th></tr></thead>
+          <tbody>
+            <tr><td><code>CONNECTION</code></td><td>2 or more legs. Checked first, so a foreign connection is still a connection.</td><td>Per-leg mini-rows (up to two, then "+N more"), "via &lt;stop&gt;" / "N stops", a train badge for rail&amp;fly legs. Countdown only if the first leg is EL AL, not departed, and not a special status.</td></tr>
+            <tr><td><code>OPERATED_BY_OTHER_AIRLINE</code></td><td>Server <code>IsForeign</code></td><td>"Operated by &lt;carrier&gt;" panel instead of image/countdown. Status badge instead of a check-in button.</td></tr>
+            <tr><td><code>STANDARD</code></td><td>Everything else</td><td>Destination photo + countdown, check-in / boarding-pass button</td></tr>
+            <tr><td><em>7000-series placeholder</em></td><td>Any leg has <code>IsFlight7000</code></td><td>"Times will be updated" text instead of the flight number, and an "Awaiting Assignment" pill</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:14px;margin-top:10px">Separately, the <b>flight status</b> (<code>FlightStatus</code>: confirmed, check-in, flown, waiting list, stand-by, not completed) is the same object the Trips tab shows. Waiting list, stand-by and not completed are "special statuses": they swap the check-in button for a status badge and the countdown for the destination summary.</p>
+
+      <h3 style="margin:24px 0 8px">Interactive: build a card</h3>
+      <p class="lead">Set the flight's properties and see what the card shows and where a tap goes. The rules are copied from <code>mapCardStatus</code>, <code>mapCheckInState</code>, <code>MyFlightItem</code> and <code>HomeFragment.handleMyFlightClick</code>.</p>
+      <div class="callout warn" role="note"><b>⚠ Diagram only, not the real UI.</b>The card on the right is a schematic of which parts are shown, not the real design.</div>
+      <div class="builder">
+        <div class="card" style="display:grid;gap:12px">
+          <div><div class="group-label">Shape</div>
+            <div class="seg" id="mfShape" role="group" aria-label="Flight shape"><button data-v="direct" aria-pressed="true">Direct</button><button data-v="connection" aria-pressed="false">Connection</button></div></div>
+          <div><div class="group-label">Flight status</div>
+            <div class="seg" id="mfStatus" role="group" aria-label="Flight status"><button data-v="CONFIRM" aria-pressed="true">Confirmed</button><button data-v="CHECK_IN" aria-pressed="false">Check-in</button><button data-v="WAITING_LIST" aria-pressed="false">Waiting list</button><button data-v="STAND_BY" aria-pressed="false">Stand-by</button><button data-v="NOT_COMPLETED" aria-pressed="false">Not completed</button><button data-v="FLOWN" aria-pressed="false">Flown</button></div></div>
+          <label class="field">Check-in status · PNRCheckInStatus
+            <select id="mfCheckin"><option>BEFORE</option><option selected>NOW</option><option>PARTIAL</option><option>DONE</option><option>PARTIAL_DONE</option><option>PARTIAL_CLOSE</option><option>CLOSED</option><option>AT_AIRPORT</option></select></label>
+          <div class="row" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px">
+            <label class="toggle"><input type="checkbox" id="mfForeign"> Operated by another airline</label>
+            <label class="toggle"><input type="checkbox" id="mfFirstElal" checked> First leg is EL AL</label>
+            <label class="toggle"><input type="checkbox" id="mfBoarding" checked> Has boarding info</label>
+            <label class="toggle"><input type="checkbox" id="mfOnlineBp" checked> Online boarding pass allowed</label>
+            <label class="toggle"><input type="checkbox" id="mfTickets"> Has valid tickets</label>
+            <label class="toggle"><input type="checkbox" id="mfBoardClosed"> Boarding CLOSED</label>
+            <label class="toggle"><input type="checkbox" id="mfTicketed" checked> Ticketed</label>
+            <label class="toggle"><input type="checkbox" id="mfF7000"> 7000-series placeholder</label>
+            <label class="toggle"><input type="checkbox" id="mfDeparted"> Has departed</label>
+            <label class="toggle"><input type="checkbox" id="mfLanded"> Has landed</label>
+            <label class="toggle"><input type="checkbox" id="mfGrace"> 3 h+ after landing</label>
+            <label class="toggle"><input type="checkbox" id="mfDot"> Day of Travel feature on</label>
+            <label class="toggle"><input type="checkbox" id="mfDotTab"> This is the Day of Travel tab's flight</label>
+          </div>
+        </div>
+        <div class="out">
+          <div id="mfCard"></div>
+        </div>
+      </div>
+
+      <h3 style="margin:24px 0 8px">Taps &amp; buttons</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Action</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td>Tap a <b>side</b> card (peeking in)</td><td>Only scrolls it to the centre. Only the centred card responds to taps.</td></tr>
+            <tr><td>Tap the card</td><td>In order: special status + not ticketed → ticketing dialog. Foreign + Day of Travel off → "booking managed by the operating carrier" dialog. The Day of Travel tab's own flight → selects that tab. Day of Travel on → Day of Travel, pushed onto the Home tab's stack. Otherwise → flight timeline.</td></tr>
+            <tr><td>"Check in" button</td><td>WebView check-in. The PNRs are re-fetched when the user comes back (<code>onCheckInFlowStarted</code> → <code>onFragmentResume</code>), so the button flips to "Boarding pass".</td></tr>
+            <tr><td>"Boarding pass" button</td><td>Boarding passes screen if the flight has valid tickets. Otherwise the web check-in fallback, with the same refresh on return.</td></tr>
+            <tr><td>Swipe</td><td>Logs <code>carrousel_swipe</code> each time a <em>new</em> page settles (the first settle is skipped). Taps log through <code>logMyFlightClick()</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info"><b>Card text comes from the CMS.</b>Labels (title, "check in", "flight details", statuses, "operated by" and so on) are read from <code>AppDictionary.HomePage.FlightCard</code>, with <b>no bundled fallback</b>: an empty CMS entry renders blank. A few labels without a dictionary key (boarding-pass button, countdown units, train labels) come from <code>strings.xml</code>.</div>
+    </section>
+
+    <!-- LIFECYCLE -->
+    <section id="lifecycle">
+      <div class="section-head">
+        <div class="eyebrow">Timing</div>
+        <h2>When a flag change reaches the user</h2>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="step-num" aria-hidden="true">1</span><div class="step-body"><div class="step-title">Splash: <code>FetchPromoAndAppDataUseCase</code> calls <code>GetAppData</code></div><p>The <code>ConfigurationList</code> is stored in the <code>AppData</code> singleton, in memory only. Nothing else refetches it during the session.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">2</span><div class="step-body"><div class="step-title">Home content: <code>FetchBasicDataUseCase</code> calls <code>GetHomepageContent</code></div><p>Fills <code>HomepageCarouselManager</code> (old) and <code>HomeSectionsManager</code> (new) at the same time, so either homepage has its data ready.</p></div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">3</span><div class="step-body"><div class="step-title">Each time <code>HomeFragment</code>'s view is created, the flag is read again</div><p>The flag is a getter, not a cached value. Within one session the server value can't change, but the <em>user's mode</em> can (login, logout, youth/adult switch), and that changes the result when the code is <code>1</code> or <code>2</code>.</p></div></div>
+      </div>
+      <div class="callout info"><b>Changed the value on the server?</b>Users see it the next time the app goes through the splash screen, which normally means a cold start. To check on a device, swipe the app away and open it again; backgrounding it is not enough.</div>
+    </section>
+
+    <!-- TESTING -->
+    <section id="testing">
+      <div class="section-head">
+        <div class="eyebrow">Hands-on</div>
+        <h2>Testing both homepages</h2>
+        <p class="lead">There is <b>no debug switch</b> for the new homepage in <code>DebugManager</code>. Day of Travel has one, the homepage does not. Pick one of these:</p>
+      </div>
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="server">Server value</button>
+        <button role="tab" aria-selected="false" data-tab="proxy">Proxy rewrite</button>
+        <button role="tab" aria-selected="false" data-tab="local">Local code change</button>
+      </div>
+      <div class="card" data-panel="server">
+        <p>Ask the backend to set <code>newHomePageEnabled</code> in the <code>ConfigurationList</code> for the environment you test on (dev / preProd / prod each have their own). Use <code>0</code> for everyone or <code>3</code> to switch it off. Then cold-start the app.</p>
+      </div>
+      <div class="card" data-panel="proxy" hidden>
+        <p>With Charles or a similar proxy on a debug build, rewrite the <code>GetAppData</code> response so that <code>ConfigurationList.newHomePageEnabled</code> is <code>0</code> (new) or <code>3</code> (old). Cold-start the app so the splash fetches it again. This flips the homepage on your phone only, without touching the server.</p>
+      </div>
+      <div class="card" data-panel="local" hidden>
+        <p>Temporarily hard-code the value in <code>core/…/helpers/AppConfig.kt</code>:</p>
+        <div class="code"><pre>object Home {
+    val newHomePageEnabled: Int get() = 0   // TEMP: 0 = new for everyone, 3 = old. DO NOT COMMIT
+}</pre></div>
+        <div class="callout danger" style="margin-bottom:0"><b>Never commit this.</b>It overrides the server for every user of that build.</div>
+      </div>
+
+      <h3 style="margin:24px 0 8px">Related debug switches (<code>util/…/DebugManager.kt</code>, debug builds only)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><code>IS_MY_FLIGHTS_SKELETON_TEST</code></td><td>"My Flights" always shows its loading skeleton card</td></tr>
+            <tr><td><code>IS_CRISIS_MESSAGE_TEST</code></td><td>Forces a crisis message, for the banner and popup</td></tr>
+            <tr><td><code>IS_DOT_TAB_BAR_FORCE_ENABLED</code></td><td>Forces the Day of Travel tab bar on. It also shows the header hamburger on the new homepage.</td></tr>
+            <tr><td><code>IS_DOT_TAB_BAR_FORCE_WINDOW</code></td><td>Pretends a flight is inside the Day of Travel window</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:14px;margin-top:10px">For full QA scenarios (test users, CMS payloads, TalkBack passes), see <code>app/src/main/java/ui/fragments/newHome/QA_README.md</code>.</p>
+    </section>
+
+    <!-- GOTCHAS -->
+    <section id="gotchas">
+      <div class="section-head">
+        <div class="eyebrow">Common traps</div>
+        <h2>Gotchas</h2>
+      </div>
+      <input type="text" class="search" id="tsSearch" placeholder="Filter… e.g. flight, order, youth" aria-label="Filter gotchas">
+      <div id="tsList">
+        <details class="acc"><summary><span class="sym">Flag missing</span> Server didn't send it → old homepage</summary><div class="acc-body">The fallback in <code>AppConfig.Home</code> is <code>3</code> ("always hide"). If a new environment suddenly shows the old homepage, check that <code>newHomePageEnabled</code> is present in <code>ConfigurationList</code> first.</div></details>
+        <details class="acc"><summary><span class="sym">Home tab shows timeline</span> "Where did the homepage go?"</summary><div class="acc-body">With the <b>old</b> homepage and an upcoming flight, the wrapper puts the timeline (or Day of Travel) on the Home tab instead of the homepage. That's expected. The new homepage has no timeline takeover, but <b>Day of Travel still takes over</b> at launch when the feature is on and the flight is inside the travel window.</div></details>
+        <details class="acc"><summary><span class="sym">Section missing</span> A new-homepage section doesn't appear</summary><div class="acc-body">The new homepage has no local content: an empty list hides the section. Items are also filtered by <code>IsActive</code> and <code>DisplayMode</code> (<code>visibleToUser()</code>), so an item set to "youth only" disappears for adults and guests. Check the CMS item, not the app.</div></details>
+        <details class="acc"><summary><span class="sym">Order ignored</span> Section order looks wrong</summary><div class="acc-body"><code>Order = 0</code> means "unplaced", not "first". Unplaced sections come <em>after</em> all numbered ones, in <code>HomeSectionType</code> declaration order. The first visible section moves into the hero slot when the user has no flight.</div></details>
+        <details class="acc"><summary><span class="sym">Value 1</span> "Youth only" shows the new homepage to nobody</summary><div class="acc-body">Youth users go to Youth World before the homepage is considered. Use <code>0</code> or <code>2</code>.</div></details>
+        <details class="acc"><summary><span class="sym">Value 2 + mode 0</span> Some logged-in users still get the old homepage</summary><div class="acc-body">A user whose mode is <code>0</code> ("youth and adults") only matches codes <code>0</code> or negative. With <code>2</code> ("adults only") they get the old homepage.</div></details>
+        <details class="acc"><summary><span class="sym">Deep link Back</span> Back from Flight Tracker lands on Menu</summary><div class="acc-body">That's the old-homepage behaviour: "no history" screens are hosted on the Menu tab. With the new homepage they are hosted on Home. See <code>MainActivity.navigateToFeatureHostTabNoHistory()</code>.</div></details>
+        <details class="acc"><summary><span class="sym">Duplicate Menu</span> Hamburger on the new homepage</summary><div class="acc-body">The header hamburger is shown only when the Day of Travel tab bar is on (<code>isDayOfTravelTabBarEnabled</code>). With the old tab bar the Menu tab exists, so the hamburger is hidden on purpose.</div></details>
+      </div>
+    </section>
+
+    <!-- LOGCAT -->
+    <section id="logcat">
+      <div class="section-head">
+        <div class="eyebrow">Reference</div>
+        <h2>Logcat cheat-sheet</h2>
+        <p class="lead">Logs go through <code>SnappLog</code> under tag <code>ELALog</code>, in debug builds only.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Filter</th><th>What you'll see</th></tr></thead>
+          <tbody>
+            <tr><td><code>tag:ELALog message:HomeFragmentWrapper</code></td><td>Start-destination decisions, "already set for generation N, skipping", back-press handling</td></tr>
+            <tr><td><code>tag:ELALog message:getHomepageContent</code></td><td>Homepage content fetch result</td></tr>
+            <tr><td><code>tag:ELALog message:FetchPromoAndAppDataUseCase</code></td><td>The <code>GetAppData</code> fetch on splash, where the flag comes from</td></tr>
+            <tr><td><code>tag:ELALog message:HomeFragmentViewModel</code></td><td>Old homepage: which user style it applied (guest / Matmid / birthday)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FILES -->
+    <section id="files">
+      <div class="section-head">
+        <div class="eyebrow">Reference</div>
+        <h2>Key files</h2>
+        <p class="lead">All paths are in <code>~/Android</code>.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>app/…/ui/fragments/homeFragment/HomeFragment.kt</code></td><td><b>The switch.</b> <code>onCreateView</code> picks XML or Compose, and every lifecycle method branches on the flag.</td></tr>
+            <tr><td><code>app/…/homeFragment/wrapper/HomeFragmentWrapper.kt</code></td><td>Home tab gatekeeper: Youth World / Day of Travel / timeline / homepage</td></tr>
+            <tr><td><code>app/src/main/res/navigation/home_wrapper_navigation.xml</code></td><td>Home tab nav graph (<code>DummyHomeFragment</code> start, <code>homeFragment</code>, timeline, Day of Travel, Youth World)</td></tr>
+            <tr><td><code>core/…/helpers/AppConfig.kt</code></td><td><code>AppConfig.Home.newHomePageEnabled</code> with the <code>?: 3</code> fallback</td></tr>
+            <tr><td><code>core/…/useCases/DisplayModeUseCase.kt</code> + <code>helpers/DisplayModeResolver.kt</code></td><td>Display-mode code vs. user mode</td></tr>
+            <tr><td><code>data-source/…/appData/ConfigurationListResponse.kt</code></td><td>The <code>newHomePageEnabled</code> JSON field</td></tr>
+            <tr><td><code>core/…/helpers/HomeFragmentWrapperHelper.kt</code></td><td>Generation counter + <code>signalReset()</code></td></tr>
+            <tr><td><code>app/…/homeFragment/HomeFragmentViewModel.kt</code> + <code>res/layout/fragment_home.xml</code></td><td>Old homepage</td></tr>
+            <tr><td><code>app/…/ui/fragments/newHome/NewHomeViewModel.kt</code></td><td>New homepage state: sections, order, My Flights, banners</td></tr>
+            <tr><td><code>app/…/homeFragment/compose/NewHomeScreen.kt</code></td><td>New homepage layout: hero slot logic, section rendering</td></tr>
+            <tr><td><code>core/…/managers/HomeSectionsManager.kt</code></td><td>New homepage section data, order and titles from <code>GetHomepageContent</code></td></tr>
+            <tr><td><code>auth/…/login/useCases/FetchBasicDataUseCase.kt</code></td><td>Calls <code>GetHomepageContent</code> and fills both homepages' managers</td></tr>
+            <tr><td><code>app/…/ui/activities/main/MainActivity.kt</code></td><td><code>navigateToFeatureHostTabNoHistory()</code>: Home vs. Menu host tab</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="sign">
+      <span class="av" aria-hidden="true">NN</span>
+      <div>
+        <div class="role">Written &amp; crafted with care by</div>
+        <div class="who">Netanel Boris Niazov</div>
+        <div class="note">"Built this one stage at a time. Hope it makes your takeoff smooth. Good luck with the rest of the journey ✈️" <span class="heart">♥</span></div>
+      </div>
+    </div>
+    <footer>
+      Written 8 Oct 2026 from the code at <code>Android@72ec21fca</code>. See part 1 (Live Activity) for the Flight SDK.
+    </footer>
+  </main>
+</div>
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- theme (shared with part 1) ---------- */
+  const themes = ['auto', 'light', 'dark'];
+  let theme = store.get('lah-theme', 'auto');
+  const applyTheme = () => {
+    if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+    $('#themeLabel').textContent = theme[0].toUpperCase() + theme.slice(1);
+  };
+  $('#themeBtn').addEventListener('click', () => { theme = themes[(themes.indexOf(theme) + 1) % 3]; store.set('lah-theme', theme); applyTheme(); });
+  applyTheme();
+
+  /* ---------- copy buttons ---------- */
+  $$('.code').forEach(codeEl => {
+    const b = document.createElement('button');
+    b.className = 'btn copy'; b.type = 'button'; b.textContent = 'Copy';
+    b.addEventListener('click', async () => {
+      const text = codeEl.querySelector('pre').textContent;
+      try { await navigator.clipboard.writeText(text); }
+      catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove(); }
+      b.textContent = 'Copied'; b.classList.add('ok');
+      setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1400);
+    });
+    codeEl.appendChild(b);
+  });
+
+  /* ---------- tabs ---------- */
+  const tabBtns = $$('[data-tab]');
+  tabBtns.forEach(b => b.addEventListener('click', () => {
+    tabBtns.forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    $$('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== b.dataset.tab; });
+  }));
+
+  /* ---------- simulator: what does the Home tab open? ---------- */
+  const SIM = { flag: '0', user: 'guest' };
+  const USER_MODE = { guest: 2, adult: 2, youth: 1, both: 0 };
+  const USER_LABEL = { guest: 'Guest (counted as adult, mode 2)', adult: 'Adult (mode 2)', youth: 'Youth (mode 1)', both: 'Mode 0 user' };
+  function wireSeg(id, key, cb) {
+    $$(`#${id} button`).forEach(b => b.addEventListener('click', () => {
+      SIM[key] = b.dataset.v;
+      $$(`#${id} button`).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      cb();
+    }));
+  }
+  function resolveFlag() {
+    const raw = SIM.flag === 'null' ? null : parseInt(SIM.flag, 10);
+    const code = raw == null ? 3 : raw;                       // AppConfig.Home: ?: 3
+    const mode = USER_MODE[SIM.user];
+    let on, why;
+    if (code < 0) { on = true; why = `${code} is negative → treated as "no value" → show`; }
+    else if (code === 0) { on = true; why = '0 → show to everyone'; }
+    else if (code === mode) { on = true; why = `${code} matches the user's mode ${mode} → show`; }
+    else { on = false; why = code === 3 ? '3 → always hide' : `${code} ≠ user mode ${mode} → hide`; }
+    if (raw == null) why = 'missing → AppConfig falls back to 3 → always hide';
+    return { on, why, code };
+  }
+  function renderSim() {
+    const flight = $('#simFlight').checked, dot = $('#simDot').checked, req = $('#simDotReq').checked;
+    const f = resolveFlag();
+    const youthWorld = SIM.user === 'youth';
+    const rules = [
+      { t: 'Youth World mode?', hit: youthWorld, dest: 'youthWorldPreviewFragment', note: 'Youth World preview. No homepage.' },
+      { t: 'Pending "open Day of Travel" request?', hit: req, dest: 'dayOfTravelFragment', note: 'Day of Travel, one time only.' },
+      { t: 'Upcoming flight AND old homepage?', hit: flight && !f.on, dest: dot ? 'dayOfTravelFragment' : 'homeTimelineFragment', note: dot ? 'Flight takeover → Day of Travel.' : 'Flight takeover → flight timeline.' },
+      { t: 'Otherwise', hit: true, dest: 'homeFragment', note: f.on ? 'NEW Compose homepage (NewHomeScreen).' : 'OLD XML homepage (fragment_home.xml).' }
+    ];
+    const winner = rules.findIndex(r => r.hit);
+    $('#simPath').innerHTML = rules.map((r, i) => {
+      const state = i < winner ? 'skip' : i === winner ? 'win' : 'off';
+      const mark = state === 'win' ? '✓' : state === 'skip' ? '✗' : '·';
+      return `<li class="${state}"><span class="m">${mark}</span><span>${esc(r.t)}</span></li>`;
+    }).join('');
+    const w = rules[winner];
+    const isHome = w.dest === 'homeFragment';
+    const cls = isHome ? (f.on ? 'new' : 'old') : 'other';
+    $('#simResult').className = 'result ' + cls;
+    $('#simResult').innerHTML = `
+      <div class="r-label">Home tab opens</div>
+      <div class="r-dest"><code>${w.dest}</code></div>
+      <div class="r-note">${esc(w.note)}</div>
+      <div class="r-flag">Flag check for <b>${esc(USER_LABEL[SIM.user])}</b>: ${esc(f.why)} → <b>${f.on ? 'new' : 'old'}</b> homepage${isHome ? '' : ' <span style="opacity:.75">(not reached this time)</span>'}</div>`;
+  }
+  wireSeg('simFlag', 'flag', renderSim);
+  wireSeg('simUser', 'user', renderSim);
+  ['#simFlight', '#simDot', '#simDotReq'].forEach(id => $(id).addEventListener('change', renderSim));
+  renderSim();
+
+  /* ---------- section order simulator ---------- */
+  const SECTIONS = [
+    { k: 'RECOMMENDED_ACTIONS', server: 'RecommendedActions', ui: 'Primary actions row' },
+    { k: 'ADDITIONAL_ACTIONS', server: 'MoreActions', ui: 'Additional actions' },
+    { k: 'PROMO_CAROUSEL', server: 'SpecialOffers', ui: 'Promo carousel' },
+    { k: 'PARTNERS', server: 'MoreProducts', ui: 'Partners row' },
+    { k: 'DESTINATIONS', server: 'RecommendedDestinations', ui: 'Destinations row' },
+    { k: 'REDEMPTION', server: 'RedeemClubPoints', ui: 'Redeem points' },
+    { k: 'MEMBER_EXCLUSIVE', server: 'UpgradeCenter', ui: 'Member exclusive' }
+  ];
+  const tbody = $('#ordTable tbody');
+  SECTIONS.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><code style="font-size:11px;overflow-wrap:normal;word-break:normal">${s.k}</code><div style="font-size:12px;color:var(--muted)">${s.server}</div></td>
+      <td><input type="text" inputmode="numeric" class="mono ord" data-i="${i}" value="0" aria-label="Order for ${s.k}" style="width:64px"></td>
+      <td style="text-align:center"><input type="checkbox" class="has" data-i="${i}" checked aria-label="${s.k} has items"></td>`;
+    tbody.appendChild(tr);
+  });
+  function renderOrder() {
+    const flight = $('#ordFlight').checked;
+    const rows = SECTIONS.map((s, i) => {
+      const n = parseInt($(`.ord[data-i="${i}"]`).value, 10);
+      return { ...s, i, order: n > 0 ? n : null, has: $(`.has[data-i="${i}"]`).checked };
+    });
+    // stable sort, nulls last — mirrors compareBy(nullsLast()) over the declaration order
+    const sorted = rows.slice().sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.i - b.i);
+    const visible = sorted.filter(r => r.has);
+    const slot = flight ? null : visible[0];
+    const below = flight ? visible : visible.slice(1);
+    const tag = r => r.order ? `<span class="o">Order ${r.order}</span>` : `<span class="o un">unplaced</span>`;
+    const hidden = sorted.filter(r => !r.has);
+    $('#ordStack').innerHTML = `
+      <div class="blk pin"><b>Sticky header</b><span>Avatar · logo · menu (pinned)</span></div>
+      <div class="blk hero">
+        <b>Hero</b><span>Crisis + birthday banners overlay · hero carousel (<code>HeroCarousel</code>) · flight search bar</span>
+        <div class="blk slot">${flight
+          ? '<b>Hero slot: My Flights</b><span>The user has a flight, so the flight cards take this slot</span>'
+          : slot ? `<b>Hero slot: ${slot.ui}</b><span><code>${slot.k}</code> ${tag(slot)} · first visible section, moved up</span>`
+                 : '<b>Hero slot: empty</b><span>No visible sections</span>'}</div>
+      </div>
+      ${below.map((r, n) => `<div class="blk sec"><span class="num">${n + 1}</span><b>${r.ui}</b><span><code>${r.k}</code> ${tag(r)}</span></div>`).join('')}
+      ${hidden.length ? `<div class="blk gone"><b>Hidden (no items)</b><span>${hidden.map(r => `<code>${r.k}</code>`).join(' ')}</span></div>` : ''}`;
+  }
+  $('#ordTable').addEventListener('input', renderOrder);
+  $('#ordTable').addEventListener('change', renderOrder);
+  $('#ordFlight').addEventListener('change', renderOrder);
+  $('#ordReset').addEventListener('click', () => { $$('.ord').forEach(x => x.value = '0'); $$('.has').forEach(x => x.checked = true); renderOrder(); });
+  $('#ordShuffle').addEventListener('click', () => {
+    const nums = SECTIONS.map((_, i) => i + 1).sort(() => Math.random() - .5);
+    $$('.ord').forEach((x, i) => x.value = Math.random() < .2 ? '0' : String(nums[i]));
+    renderOrder();
+  });
+  renderOrder();
+
+
+  /* ---------- My Flights card simulator ---------- */
+  const MF = { shape: 'direct', status: 'CONFIRM' };
+  ['mfShape', 'mfStatus'].forEach(id => $$(`#${id} button`).forEach(b => b.addEventListener('click', () => {
+    MF[id === 'mfShape' ? 'shape' : 'status'] = b.dataset.v;
+    $$(`#${id} button`).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    renderMf();
+  })));
+  const chk = id => $('#' + id).checked;
+  function renderMf() {
+    const foreign = chk('mfForeign'), conn = MF.shape === 'connection', st = MF.status, ci = $('#mfCheckin').value;
+    const why = [];
+    // dropped?
+    if (chk('mfGrace')) { $('#mfCard').innerHTML = '<div class="mf gone"><b>No card</b><br>3+ hours after scheduled landing → <code>didPassGraceWindowAfterLanding</code> drops it.</div>'; return; }
+    if (foreign && st === 'FLOWN') { $('#mfCard').innerHTML = '<div class="mf gone"><b>No card</b><br>A flight operated by another airline is dropped as soon as it is flown.</div>'; return; }
+    // variant (mapCardStatus)
+    const variant = conn ? 'CONNECTION' : foreign ? 'OPERATED_BY_OTHER_AIRLINE' : 'STANDARD';
+    const operated = variant === 'OPERATED_BY_OTHER_AIRLINE';
+    const special = ['NOT_COMPLETED', 'WAITING_LIST', 'STAND_BY'].includes(st);
+    const f7000 = chk('mfF7000'), departed = chk('mfDeparted');
+    const showsBadge = operated || special;
+    const showsSummary = departed || special || f7000;
+    const connCountdown = conn && chk('mfFirstElal') && !departed && !special;
+    const showsTitle = (!showsBadge && !f7000) || operated;
+    // check-in state (mapCheckInState)
+    let cs;
+    if (!chk('mfBoarding')) { cs = 'NOT_OPEN'; why.push('No boarding info → NOT_OPEN (hard gate)'); }
+    else if (chk('mfLanded')) { cs = 'NOT_OPEN'; why.push('Landed → NOT_OPEN (hard gate)'); }
+    else {
+      if (!chk('mfOnlineBp')) { cs = 'NOT_OPEN'; why.push('Online boarding pass not allowed → NOT_OPEN'); }
+      else if (['DONE', 'PARTIAL_CLOSE', 'PARTIAL_DONE'].includes(ci)) { cs = 'DONE'; why.push(`${ci} → DONE (boarding pass)`); }
+      else if (['PARTIAL', 'NOW'].includes(ci)) { cs = 'OPEN'; why.push(`${ci} → OPEN (check in)`); }
+      else if (chk('mfTickets')) { cs = 'DONE'; why.push(`${ci} + valid tickets → DONE`); }
+      else { cs = 'NOT_OPEN'; why.push(`${ci} → NOT_OPEN`); }
+      if (chk('mfBoardClosed')) { cs = 'DONE'; why.push('Boarding CLOSED overrides → DONE'); }
+    }
+    // image / trailing block
+    let img, imgD;
+    if (operated) { img = 'Operated by &lt;carrier&gt;'; imgD = 'Info panel, no photo, no countdown'; }
+    else if (conn) { img = connCountdown ? 'Countdown' : 'Destination summary'; imgD = (connCountdown ? 'Days · hours · minutes to departure' : 'Final city + "via &lt;stop&gt;" / "N stops"') + (conn ? ' · final destination photo' : ''); }
+    else if (showsSummary) { img = 'Destination summary'; imgD = 'City · local time now · temperature'; }
+    else { img = 'Countdown'; imgD = 'Destination photo + days · hours · minutes'; }
+    // details column
+    const details = f7000 ? ['Times will be updated', '7000-series placeholder text'] : conn ? ['Leg mini-rows', 'Up to 2 legs, then "+N more flights"'] : ['Flight number · date', 'e.g. "טיסה LY315" · Thu 12 Oct'];
+    // footer
+    let foot;
+    if (f7000) foot = '<span class="mf-btn pill7k">Awaiting Assignment</span>';
+    else if (showsBadge) foot = `<span class="mf-btn badge">Status badge: ${({ CONFIRM: 'Confirmed', CHECK_IN: 'Check-in', WAITING_LIST: 'Waiting list', STAND_BY: 'Stand-by', NOT_COMPLETED: 'Not completed', FLOWN: 'Flown' })[st]}</span>`;
+    else foot = cs === 'OPEN' ? '<span class="mf-btn open">Check in</span>' : cs === 'DONE' ? '<span class="mf-btn done">▣ Boarding pass</span>' : '<span class="mf-btn link">Flight details</span>';
+    // tap (handleMyFlightClick → navigateToFlightDetails)
+    const dot = chk('mfDot');
+    let tap;
+    if (special && !chk('mfTicketed')) tap = operated ? 'Foreign "pending booking" dialog' : 'Pending-ticketing dialog for this status';
+    else if (operated && !dot) tap = '"Booking managed by the operating carrier" dialog';
+    else if (dot && chk('mfDotTab')) tap = 'Selects the Day of Travel tab (no second copy)';
+    else if (dot) tap = 'Day of Travel, pushed on the Home tab';
+    else tap = 'Flight timeline (<code>homeTimelineFragment</code>)';
+    $('#mfCard').innerHTML = `
+      <div class="mf">
+        <div class="mf-head"><span>${showsTitle ? 'My flight' : '<span style="color:var(--muted);font-weight:500">(no title)</span>'}</span><span class="tag">${variant}</span></div>
+        <div class="mf-body">
+          <div class="mf-cell"><span class="k">Details</span><span class="v">${details[0]}</span><span class="d">${details[1]}</span></div>
+          <div class="mf-cell"><span class="k">Picture block</span><span class="v">${img}</span><span class="d">${imgD}</span></div>
+        </div>
+        <div class="mf-foot"><span class="k" style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--muted)">FOOTER</span>${foot}</div>
+        <div class="mf-tap">Tap the card → <b>${tap}</b></div>
+      </div>
+      <div class="mf-why"><div><b>Check-in state:</b> ${cs}${showsBadge || f7000 ? ' (computed, but the footer shows a badge/pill instead)' : ''}</div>${why.map(w => `<div>· ${esc(w)}</div>`).join('')}${special ? '<div>· Special status → status badge + destination summary, title hidden</div>' : ''}</div>`;
+  }
+  $$('#my-flights input, #my-flights select').forEach(el => el.addEventListener('change', renderMf));
+  renderMf();
+
+  /* ---------- gotcha filter ---------- */
+  $('#tsSearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase().trim();
+    $$('#tsList details').forEach(d => { const hit = !q || d.textContent.toLowerCase().includes(q); d.style.display = hit ? '' : 'none'; if (q && hit) d.open = true; });
+  });
+
+  /* ---------- in-page links (works inside sandboxed viewers too) ---------- */
+  function goTo(id, smooth = true) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + scrollY - ($('.topbar').offsetHeight + 12);
+    window.scrollTo({ top: Math.max(0, top), behavior: smooth && !reduceMotion ? 'smooth' : 'auto' });
+    try { history.replaceState(null, '', '#' + id); } catch {}
+    el.setAttribute('tabindex', '-1');
+    el.focus({ preventScroll: true });
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey) return;
+    const id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    setSheet(false);
+    goTo(id);
+  });
+  if (location.hash.length > 1) setTimeout(() => goTo(decodeURIComponent(location.hash.slice(1)), false), 50);
+
+  /* ---------- table of contents ---------- */
+  const TOC = [
+    { id: 'switch', icon: '🔀', c: 'var(--accent)', t: 'How the switch works', d: 'One flag, one fragment, two UIs. The display-mode codes explained.' },
+    { id: 'simulator', icon: '🎛️', c: 'var(--ok)', t: 'Simulator: what opens?', d: 'Flip the flag and user type, and watch the Home tab decide.', live: true },
+    { id: 'wrapper', icon: '🚪', c: 'var(--pre)', t: 'HomeFragmentWrapper', d: 'Youth World, Day of Travel and flight takeover come before any homepage.' },
+    { id: 'compare', icon: '⚖️', c: 'var(--fly)', t: 'Old vs. new', d: 'UI tech, data, flights, analytics, side by side.' },
+    { id: 'anatomy', icon: '🧱', c: 'var(--arr)', t: 'New homepage anatomy', d: 'Pinned top, hero slot, and server-ordered sections.', live: true },
+    { id: 'my-flights', icon: '✈️', c: 'var(--fly)', t: 'My Flights carousel', d: 'Which flights get a card, variants, check-in button, where a tap goes.', live: true },
+    { id: 'lifecycle', icon: '⏱️', c: 'var(--warn)', t: 'When a change lands', d: 'Splash fetch, in-memory config, cold start.' },
+    { id: 'testing', icon: '🧪', c: 'var(--ok)', t: 'Testing both homepages', d: 'Server value, proxy rewrite, or a local hack.' },
+    { id: 'gotchas', icon: '🪤', c: 'var(--danger)', t: 'Gotchas', d: 'Missing flag, flight takeover, Order 0, value 1.', live: true },
+    { id: 'logcat', icon: '🔎', c: 'var(--arr)', t: 'Logcat cheat-sheet', d: 'Which ELALog lines to filter on.' },
+    { id: 'files', icon: '📂', c: 'var(--end)', t: 'Key files', d: 'Where every piece lives in ~/Android.' }
+  ];
+  const visited = store.get('hp-visited', {});
+  const mins = id => Math.max(1, Math.round((document.getElementById(id).innerText || '').split(/\s+/).length / 200));
+  const total = TOC.reduce((a, x) => a + mins(x.id), 0);
+  $('#contentsMeta').textContent = `${TOC.length} sections · ~${total} min read · cards marked LIVE are interactive`;
+  $('#tocMins').textContent = `~${total} min`;
+  const grid = $('#contentsGrid'), list = $('#tocList'), sheet = $('#tocSheetList');
+  TOC.forEach((x, i) => {
+    const n = String(i + 1).padStart(2, '0');
+    const a = document.createElement('a');
+    a.className = 'toc-card' + (visited[x.id] ? ' visited' : ''); a.href = '#' + x.id; a.style.setProperty('--c', x.c); a.dataset.id = x.id;
+    a.innerHTML = `<span class="ico" aria-hidden="true">${x.icon}</span><span><span class="num">${n} · ${mins(x.id)} MIN</span><span class="t">${esc(x.t)}${x.live ? '<span class="live">Live</span>' : ''}</span><span class="d">${esc(x.d)}</span></span><span class="go" aria-hidden="true">→</span>`;
+    grid.appendChild(a);
+    const l = document.createElement('a'); l.href = '#' + x.id; l.dataset.id = x.id;
+    l.innerHTML = `<span class="n">${i + 1}</span><span>${esc(x.t)}</span>`;
+    list.appendChild(l);
+    const m = document.createElement('a'); m.href = '#' + x.id; m.dataset.id = x.id;
+    m.innerHTML = `<span class="i" aria-hidden="true">${x.icon}</span><span>${esc(x.t)}</span><span class="k">${n}</span>`;
+    sheet.appendChild(m);
+  });
+  const tocBtn = $('#tocBtn'), tocSheet = $('#tocSheet');
+  function setSheet(open) { tocSheet.classList.toggle('open', open); tocBtn.setAttribute('aria-expanded', String(open)); }
+  tocBtn.addEventListener('click', () => setSheet(!tocSheet.classList.contains('open')));
+  tocSheet.addEventListener('click', e => { if (e.target.closest('a') || e.target.classList.contains('scrim')) setSheet(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setSheet(false); });
+
+  const sideLinks = $$('#tocList a'), sheetLinks = $$('#tocSheetList a');
+  const secs = TOC.map(x => document.getElementById(x.id));
+  function onScroll() {
+    const y = scrollY + innerHeight * 0.3;
+    let idx = -1;
+    secs.forEach((s, i) => { if (s.offsetTop <= y) idx = i; });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) idx = secs.length - 1;
+    sideLinks.forEach((a, i) => { a.classList.toggle('active', i === idx); a.classList.toggle('passed', i < idx); });
+    sheetLinks.forEach((a, i) => a.classList.toggle('active', i === idx));
+    if (idx >= 0) {
+      const act = sideLinks[idx];
+      $('#tocRail').style.height = Math.max(0, act.offsetTop + act.offsetHeight / 2 - 14) + 'px';
+      const id = TOC[idx].id;
+      if (!visited[id]) { visited[id] = 1; store.set('hp-visited', visited); const c = grid.querySelector(`[data-id="${id}"]`); if (c) c.classList.add('visited'); }
+    } else $('#tocRail').style.height = '0px';
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const pct = max > 0 ? Math.min(100, Math.round(100 * scrollY / max)) : 0;
+    $('#readProgress').style.width = pct + '%';
+    $('#tocPct').textContent = `${pct}% read`;
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { onScroll(); ticking = false; }); } }, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>

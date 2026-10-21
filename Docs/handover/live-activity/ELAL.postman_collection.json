@@ -1,0 +1,462 @@
+{
+  "info": {
+    "_postman_id": "a4e0bd97-796a-40af-89ee-131df61af588",
+    "name": "ELAL Live Updates (handover)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "10009139",
+    "_collection_link": "https://go.postman.co/collection/10009139-67cacdb6-2ba4-4705-bfd6-89f04f47f6b0?source=collection_link",
+    "description": "FCM test pushes for the El Al Flight SDK Live Update notification.\n\nBefore sending, set these collection variables (collection > Variables):\n- accessToken: the ya29... OAuth token from the python command (expires after ~60 min)\n- deviceToken: the phone's FCM registration token from Logcat\n- projectId: elaldemoandroid (demo app) or elal-4d92d (production app)\n\nEach request is a full snapshot from a past test, so dates are in the past. For DEPARTED, set departureTime near 'now' or the countdown starts at 'Landing soon'. See 01-live-activity.html in the same folder."
+  },
+  "item": [
+    {
+      "name": "CHECK_IN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"start\",\n      \"activityId\": \"41326ab8-c165-437c-a421-4f80bf02e617\",\n      \"flightNumber\": \"\",\n      \"flightDate\": \"2026-05-07\",\n      \"direction\": \"DEPARTURE\",\n      \"carrier\": \"EL_AL\",\n      \"pnr\": \"TEST01\",\n      \"origin\": \"TLV\",\n      \"destination\": \"ATH\",\n      \"stage\": \"CHECK_IN\",\n      \"stageTitle\": \"On Boarding\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"\",\n      \"terminal\": \"\",\n      \"arrivalTerminal\": \"\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"\",\n      \"flightStatusText\": \"בזמן\",\n      \"title\": \"דלפקי צ'ק-אין:\",\n      \"message\": \"Check-in is now open. Counters: אזור D, דלפקים 78 עד 99\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-05-19T11:37:00.0000000\",\n      \"arrivalTime\": \"2026-05-19T11:39:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.0000\",\n      \"flightDuration\": \"130\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"he\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GATE_READY",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"95786462-7b8a-491b-ba68-28efa29c5060\",\n      \"flightNumber\": \"LY321\",\n      \"flightDate\": \"2026-05-25\",\n      \"direction\": \"\",\n      \"carrier\": \"\",\n      \"pnr\": \"\",\n      \"origin\": \"TLV\",\n      \"destination\": \"\",\n      \"stage\": \"GATE_READY\",\n      \"stageTitle\": \"Boarding soon\",\n      \"flightStatus\": \"\",\n      \"gate\": \"D7\",\n      \"terminal\": \"3\",\n      \"arrivalTerminal\": \"1\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"Terminal\",\n      \"flightStatusText\": \"On time\",\n      \"title\": \"Wait for boarding to open\",\n      \"message\": \"Gate will open at 14:05\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"Gate\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-05-25T14:45:00.0000000\",\n      \"arrivalTime\": \"2026-05-25T18:10:00.0000000\",\n      \"gateOpenTime\": \"2026-05-25T14:05:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.0000\",\n      \"flightDuration\": \"\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"en\",\n      \"departureTimezoneOffset\": \"+03\"\n    },\n    \"android\": {\n      \"priority\": \"HIGH\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Awaiting_Boarding_1.4",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"41326ab8-c165-437c-a421-4f80bf02e617\",\n      \"flightNumber\": \"LY541\",\n      \"flightDate\": \"2026-05-07\",\n      \"direction\": \"\",\n      \"carrier\": \"\",\n      \"pnr\": \"\",\n      \"origin\": \"TLV\",\n      \"destination\": \"ATH\",\n      \"stage\": \"BOARDING_PENDING\",\n      \"stageTitle\": \"עלייה בקרוב\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"A12\",\n      \"terminal\": \"3\",\n      \"arrivalTerminal\": \"\",\n      \"boardingZone\": \"אזור 1\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"טרמינל\",\n      \"flightStatusText\": \"בזמן\",\n      \"title\": \"האזור שלך:\",\n      \"message\": \"התכונן לעלייה בקרוב\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"שער\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-05-07T07:05:00.0000000\",\n      \"arrivalTime\": \"2026-05-07T09:15:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.0000\",\n      \"flightDuration\": \"130\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"he\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "BOARDING",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"c29e90c2-fcb9-4217-aa0f-993123d77cdc\",\n      \"flightNumber\": \"LY225\",\n      \"flightDate\": \"2026-08-31\",\n      \"direction\": \"\",\n      \"carrier\": \"\",\n      \"pnr\": \"TEST01\",\n      \"origin\": \"TLV\",\n      \"destination\": \"CDG\",\n      \"stage\": \"BOARDING\",\n      \"stageTitle\": \"העלייה למטוס החלה\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"D2\",\n      \"terminal\": \"3\",\n      \"arrivalTerminal\": \"2B\",\n      \"boardingZone\": \"2\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"טרמינל\",\n      \"flightStatusText\": \"בזמן\",\n      \"title\": \"העליה למטוס היא לפי קבוצות\",\n      \"message\": \"\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"שער\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-08-31T14:15:00.0000000\",\n      \"arrivalTime\": \"2026-08-31T18:20:00.0000000\",\n      \"gateOpenTime\": \"2026-08-31T13:35:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.0000\",\n      \"flightDuration\": \"305\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"he\",\n      \"departureTimezoneOffset\": \"+03\",\n      \"LiveActivityStaleModeSecondaryMessageGeneral\": \"הנתונים מעודכנים ל-{0}\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "LAST_CALL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"41326ab8-c165-437c-a421-4f80bf02e617\",\n      \"flightNumber\": \"LY323\",\n      \"flightDate\": \"2026-06-30\",\n      \"direction\": \"\",\n      \"carrier\": \"\",\n      \"pnr\": \"TEST01\",\n      \"origin\": \"TLV\",\n      \"destination\": \"CDG\",\n      \"stage\": \"LAST_CALL\",\n      \"stageTitle\": \"\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"D9\",\n      \"terminal\": \"3\",\n      \"arrivalTerminal\": \"2B\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"טרמינל\",\n      \"flightStatusText\": \"בזמן\",\n      \"title\": \"קריאה אחרונה\",\n      \"message\": \"העלייה למטוס לקראת סיום\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"שער\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-06-30T08:05:00.0000000\",\n      \"arrivalTime\": \"2026-06-30T16:05:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.0000\",\n      \"flightDuration\": \"130\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"he\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DEPARTURE_PENDING",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"demo-001\",\n      \"flightNumber\": \"LY315\",\n      \"flightDate\": \"2026-04-29\",\n      \"direction\": \"DEPARTURE\",\n      \"carrier\": \"EL_AL\",\n      \"pnr\": \"\",\n      \"origin\": \"TLV\",\n      \"destination\": \"LHR\",\n      \"stage\": \"DEPARTURE_PENDING\",\n      \"stageTitle\": \"Departing Soon\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"\",\n      \"terminal\": \"5\",\n      \"arrivalTerminal\": \"2\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"4\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"Terminal\",\n      \"flightStatusText\": \"On time\",\n      \"title\": \"Baggage claim at carousel:\",\n      \"message\": \"Estimated time: \",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"\",\n      \"carouselTitle\": \"Carousel\",\n      \"departureTime\": \"2026-04-29T14:00:00.0000000\",\n      \"arrivalTime\": \"2026-04-29T17:30:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"1.0000\",\n      \"flightDuration\": \"210\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"en\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DEPARTED",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"2f8facec-70ef-458e-8eb5-b9aef5e6722c\",\n      \"flightNumber\": \"LY008\",\n      \"flightDate\": \"2026-08-05\",\n      \"direction\": \"\",\n      \"carrier\": \"\",\n      \"pnr\": \"TEST01\",\n      \"origin\": \"JFK\",\n      \"destination\": \"TLV\",\n      \"stage\": \"DEPARTED\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"A2\",\n      \"terminal\": \"4\",\n      \"arrivalTerminal\": \"3\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"טרמינל\",\n      \"flightStatusText\": \"בזמן\",\n      \"title\": \"\",\n      \"message\": \"זמן משוער שנותר לנחיתה\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-08-06T00:20:00.0000000\",\n      \"arrivalTime\": \"2026-08-06T17:40:00.0000000\",\n      \"gateOpenTime\": \"2026-08-05T23:05:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.2120\",\n      \"flightDuration\": \"620\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"he\",\n      \"stageTitle\": \"בדרך\",\n      \"departureTimezoneOffset\": \"-04\",\n      \"LiveActivityStaleModeSecondaryMessageGeneral\": \"ננחת בקרוב ב-תל אביב\"\n    },\n    \"android\": {\n      \"priority\": \"HIGH\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Landing_soon_1.4",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"41326ab8-c165-437c-a421-4f80bf02e617\",\n      \"flightNumber\": \"LY541\",\n      \"flightDate\": \"2026-05-07\",\n      \"direction\": \"\",\n      \"carrier\": \"\",\n      \"pnr\": \"\",\n      \"origin\": \"TLV\",\n      \"destination\": \"ATH\",\n      \"stage\": \"LANDING_SOON\",\n      \"stageTitle\": \"נחיתה בקרוב\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"\",\n      \"terminal\": \"\",\n      \"arrivalTerminal\": \"\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"\",\n      \"flightStatusText\": \"בזמן\",\n      \"title\": \"המראה ב-07:05\",\n      \"message\": \"מגיעים בקרוב\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"\",\n      \"carouselTitle\": \"\",\n      \"departureTime\": \"2026-05-19T11:37:00.0000000\",\n      \"arrivalTime\": \"2026-05-19T12:03:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"0.0000\",\n      \"flightDuration\": \"240\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"he\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "LANDED",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"demo-001\",\n      \"flightNumber\": \"LY315\",\n      \"flightDate\": \"2026-04-29\",\n      \"direction\": \"DEPARTURE\",\n      \"carrier\": \"EL_AL\",\n      \"pnr\": \"\",\n      \"origin\": \"TLV\",\n      \"destination\": \"LHR\",\n      \"stage\": \"LANDED\",\n      \"stageTitle\": \"\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"\",\n      \"terminal\": \"5\",\n      \"arrivalTerminal\": \"2\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"Terminal\",\n      \"flightStatusText\": \"On time\",\n      \"title\": \"Welcome to LHR\",\n      \"message\": \"Collect baggage at belt: \",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"\",\n      \"carouselTitle\": \"Carousel\",\n      \"departureTime\": \"2026-05-19T11:37:00.0000000\",\n      \"arrivalTime\": \"2026-05-19T11:39:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"1.0000\",\n      \"flightDuration\": \"210\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"en\"\n    },\n    \"android\": {\n      \"priority\": \"HIGH\",\n      \"ttl\": \"600s\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "BAGGAGE",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"update\",\n      \"activityId\": \"demo-001\",\n      \"flightNumber\": \"LY315\",\n      \"flightDate\": \"2026-04-29\",\n      \"direction\": \"DEPARTURE\",\n      \"carrier\": \"EL_AL\",\n      \"pnr\": \"\",\n      \"origin\": \"TLV\",\n      \"destination\": \"LHR\",\n      \"stage\": \"BAGGAGE\",\n      \"stageTitle\": \"\",\n      \"flightStatus\": \"ON-TIME\",\n      \"gate\": \"\",\n      \"terminal\": \"5\",\n      \"arrivalTerminal\": \"2\",\n      \"boardingZone\": \"\",\n      \"baggageCarousel\": \"4\",\n      \"checkInCounters\": \"\",\n      \"terminalTitle\": \"Terminal\",\n      \"flightStatusText\": \"On time\",\n      \"title\": \"Baggage claim at carousel:\",\n      \"message\": \"Collect baggage at belt 4\",\n      \"baggageText\": \"\",\n      \"carryOnText\": \"\",\n      \"deskTitle\": \"\",\n      \"gateTitle\": \"\",\n      \"carouselTitle\": \"Carousel\",\n      \"departureTime\": \"2026-04-29T14:00:00.0000000\",\n      \"arrivalTime\": \"2026-04-29T17:30:00.0000000\",\n      \"dismissalDate\": \"\",\n      \"progressFraction\": \"1.0000\",\n      \"flightDuration\": \"210\",\n      \"hasConnections\": \"FALSE\",\n      \"language\": \"en\"\n    },\n    \"android\": {\n      \"priority\": \"HIGH\",\n      \"ttl\": \"600s\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "END (dismiss notification)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": {\n    \"token\": \"{{deviceToken}}\",\n    \"data\": {\n      \"event\": \"end\",\n      \"activityId\": \"41326ab8-c165-437c-a421-4f80bf02e617\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fcm.googleapis.com/v1/projects/{{projectId}}/messages:send",
+          "protocol": "https",
+          "host": [
+            "fcm",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "projects",
+            "{{projectId}}",
+            "messages:send"
+          ]
+        },
+        "description": "Ends the journey: cancels the notification and clears saved state. In the demo app, send this before a new CHECK_IN start if a journey is still active."
+      }
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deviceToken",
+      "value": "PASTE_DEVICE_FCM_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "elaldemoandroid",
+      "type": "string"
+    }
+  ]
+}
