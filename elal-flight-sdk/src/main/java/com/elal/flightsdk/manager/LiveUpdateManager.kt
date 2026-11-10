@@ -44,6 +44,7 @@ object LiveUpdateManager {
     internal const val CHANNEL_ID = "elal_journey"
     private const val PROGRESS_MAX = 240
     private const val MIN_API = 36 // Android 16
+    private const val QUEUE_SEPARATOR = "·"
 
     private val isSupported: Boolean get() = Build.VERSION.SDK_INT >= MIN_API
     // Android's ProgressStyle gap bug Fixed
@@ -606,10 +607,51 @@ object LiveUpdateManager {
         }
     }
 
+    /**
+     * CHECK_IN content with waiting times (Figma: Live Update – check-in queue load):
+     *   "Check-in desks: D78-99 · Moderate Traffic"
+     *   "Self-service: Zone D · Short Traffic"
+     *
+     * All copy is server-localized (resolved from the Umbraco dictionary on the backend, as in the
+     * main app's Day of Travel `CheckInQueue`) — the SDK holds no strings of its own for this.
+     * Line 1 is the server title (which already carries the counters) plus the desks traffic. Older
+     * payloads whose title is only a label ("Check-in desks:") still get [FlightContentState.checkInCounters]
+     * appended. Line 2 is shown only when the server sends self-service data.
+     */
+    private fun buildCheckInContent(state: FlightContentState): String {
+        val counters = state.checkInCounters?.takeIf { it.isNotBlank() && it != "--" }
+        val desksLabel = if (counters != null && !state.title.contains(counters)) {
+            combineLabelAndValue(state.title, counters)
+        } else {
+            state.title.ifBlank { counters.orDash() }
+        }
+        val desksLine = joinWithDot(desksLabel, state.checkInQueueLoadText)
+
+        val selfServiceLabel = state.message.ifBlank { state.checkInZone.orEmpty() }
+        val selfServiceLoad = state.selfServiceQueueLoadText?.takeIf { it.isNotBlank() }
+        if (selfServiceLabel.isBlank() && selfServiceLoad == null) {
+            return desksLine
+        }
+        return "$desksLine\n${joinWithDot(selfServiceLabel, selfServiceLoad)}"
+    }
+
+    /**
+     * Joins [label] and [value] with the design's middle-dot separator ("A · B"). The value is
+     * bidi-wrapped so English traffic text inside a Hebrew line (and vice versa) keeps its order.
+     * Returns [label] alone when [value] is blank.
+     */
+    private fun joinWithDot(label: String, value: String?): String {
+        val v = value?.takeIf { it.isNotBlank() } ?: return label
+        if (label.isBlank()) {
+            return BidiFormatter.getInstance().unicodeWrap(v)
+        }
+        return "$label $QUEUE_SEPARATOR ${BidiFormatter.getInstance().unicodeWrap(v)}"
+    }
+
     private fun buildContentText(context: Context, state: FlightContentState): String {
         val bidi = BidiFormatter.getInstance()
         return when (state.stage) {
-            Stage.CHECK_IN    -> combineLabelAndValue(state.title, state.checkInCounters.orDash())
+            Stage.CHECK_IN    -> buildCheckInContent(state)
             Stage.GATE_READY  -> combineLabelAndValue(state.message, combineLabelAndValue(state.gateTitle, state.gate.orDash()))
             Stage.BOARDING_PENDING -> state.message.orDash()
             Stage.BOARDING    -> state.gate

@@ -6,6 +6,7 @@ import com.elal.flightsdk.model.AppLanguage
 import com.elal.flightsdk.model.Carrier
 import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
+import com.elal.flightsdk.model.QueueLoad
 import com.elal.flightsdk.model.Stage
 import com.elal.flightsdk.utils.Logger
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -101,6 +102,14 @@ private fun Map<String, String>.toFlightContentState(fallback: FlightContentStat
         // No merge: an absent or blank baggageCarousel clears the belt (renders title only).
         baggageCarousel = get("baggageCarousel")?.takeIf { it.isNotBlank() } ?: "--",
         checkInCounters = get("checkInCounters")?.takeIf { it.isNotEmpty() } ?: fallback?.checkInCounters?.takeIf { it.isNotEmpty() } ?: "--",
+        // Queue / waiting-times fields are CHECK_IN-only: merged from the fallback like the counters so an
+        // incremental push that omits them keeps the last known load.
+        checkInCounterNumbers = get("checkInCounterNumbers")?.takeIf { it.isNotBlank() } ?: fallback?.checkInCounterNumbers,
+        checkInZone = get("checkInZone")?.takeIf { it.isNotBlank() } ?: fallback?.checkInZone,
+        checkInQueueLoad = QueueLoad.fromString(get("checkInQueueLoad")) ?: fallback?.checkInQueueLoad,
+        checkInQueueLoadText = get("checkInQueueLoadText")?.takeIf { it.isNotBlank() } ?: fallback?.checkInQueueLoadText,
+        selfServiceQueueLoad = QueueLoad.fromString(get("selfServiceQueueLoad")) ?: fallback?.selfServiceQueueLoad,
+        selfServiceQueueLoadText = get("selfServiceQueueLoadText")?.takeIf { it.isNotBlank() } ?: fallback?.selfServiceQueueLoadText,
         boardingZone = get("boardingZone")?.takeIf { it.isNotEmpty() } ?: fallback?.boardingZone?.takeIf { it.isNotEmpty() } ?: "--",
         stage = Stage.valueOf(requireField("stage").uppercase()),
         progressFraction = get("progressFraction")?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()

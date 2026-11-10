@@ -39,6 +39,18 @@ data class FlightContentState(
     val baggageCarousel: String? = null,
     val stage: Stage,
     val checkInCounters: String? = "--",
+    /** Bare counter range without the zone letter, e.g. "78-99". */
+    val checkInCounterNumbers: String? = null,
+    /** Localized check-in / self-service zone, e.g. "Zone D" / "אזור D". */
+    val checkInZone: String? = null,
+    /** Check-in desks queue load level ("Low" / "Medium" / "High"). Not rendered — the text comes from [checkInQueueLoadText]. */
+    val checkInQueueLoad: QueueLoad? = null,
+    /** Server-localized (Umbraco) check-in desks traffic text, e.g. "Moderate Traffic". */
+    val checkInQueueLoadText: String? = null,
+    /** Self-service queue load level ("Low" / "Medium" / "High"). Not rendered — the text comes from [selfServiceQueueLoadText]. */
+    val selfServiceQueueLoad: QueueLoad? = null,
+    /** Server-localized (Umbraco) self-service traffic text, e.g. "Short Traffic". */
+    val selfServiceQueueLoadText: String? = null,
     val boardingZone: String? = null,
     val progressFraction: Double = 0.0,
     val flightStatus: String? = null,

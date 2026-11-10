@@ -4,6 +4,7 @@ import com.elal.flightsdk.model.AppLanguage
 import com.elal.flightsdk.model.Carrier
 import com.elal.flightsdk.model.Direction
 import com.elal.flightsdk.model.FlightContentState
+import com.elal.flightsdk.model.QueueLoad
 import com.elal.flightsdk.model.Stage
 import com.elal.flightsdk.utils.toFormattedTime
 import com.elal.flightsdk.utils.wallClockNow
@@ -51,7 +52,11 @@ object SampleFlightData {
             val base = departureBase
             val arrTime = base.arrivalTime.toFormattedTime()
             return listOf(
-                base.copy(stage = Stage.CHECK_IN,   deskTitle = "דלפקי צ'ק-אין:",                   checkInCounters = "D78-99"),
+                base.copy(stage = Stage.CHECK_IN,   deskTitle = "דלפקי צ'ק-אין:",                   checkInCounters = "D78-99",
+                    title = "דלפקי צ'ק-אין: D78-99", message = "שירות עצמי: אזור D",
+                    checkInCounterNumbers = "78-99", checkInZone = "אזור D",
+                    checkInQueueLoad = QueueLoad.MEDIUM, checkInQueueLoadText = "עומס בינוני",
+                    selfServiceQueueLoad = QueueLoad.LOW, selfServiceQueueLoadText = "עומס נמוך"),
                 base.copy(stage = Stage.GATE_READY, gateTitle = "שער:",                             gate = "D3", terminal = "3"),
                 base.copy(stage = Stage.BOARDING_PENDING, message = "ההעלייה למטוס תחל בקרוב", gateTitle = "שער:", gate = "D3", terminal = "3"),
                 base.copy(stage = Stage.BOARDING,   title = "האזור שלך:",                            gate = "D3", terminal = "3", boardingZone = "Zone 1"),
@@ -70,7 +75,11 @@ object SampleFlightData {
             val base = arrivalBase
             val arrTime = base.arrivalTime.toFormattedTime()
             return listOf(
-                base.copy(stage = Stage.CHECK_IN,   deskTitle = "דלפקי צ'ק-אין:",                   checkInCounters = "B12-18"),
+                base.copy(stage = Stage.CHECK_IN,   deskTitle = "דלפקי צ'ק-אין:",                   checkInCounters = "B12-18",
+                    title = "דלפקי צ'ק-אין: B12-18", message = "שירות עצמי: אזור B",
+                    checkInCounterNumbers = "12-18", checkInZone = "אזור B",
+                    checkInQueueLoad = QueueLoad.HIGH, checkInQueueLoadText = "עומס גבוה",
+                    selfServiceQueueLoad = QueueLoad.LOW, selfServiceQueueLoadText = "עומס נמוך"),
                 base.copy(stage = Stage.GATE_READY, gateTitle = "שער:",                             gate = "B7", terminal = "4"),
                 base.copy(stage = Stage.BOARDING_PENDING, message = "ההעלייה למטוס תחל בקרוב", gateTitle = "שער:", gate = "B7", terminal = "4"),
                 base.copy(stage = Stage.BOARDING,   title = "האזור שלך:",                            gate = "B7", terminal = "4", boardingZone = "Zone 1"),
